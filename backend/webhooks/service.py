@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
@@ -309,6 +310,8 @@ async def upsert_lead(table_name: str, data: dict, webhook_config_id: int):
     except Exception as ws_err:
         logger.warning(f"Erro ao transmitir broadcast WS do lead: {ws_err}")
 
+    return lead_id
+
 
 async def delete_contact_data(db: AsyncSession, webhook_id: int, table_name: str, phones: list, lead_ids: list = None):
     """Remove todos os dados de um contato (Logs, Memória, Sumários, Gatilhos) de todas as plataformas."""
@@ -439,3 +442,64 @@ async def handle_keyword_handoffs(db: AsyncSession, config, event, extracted: di
                     except: pass
         return True
     return False
+
+
+async def save_media_memory_to_user_memory(
+    db: AsyncSession,
+    phone: str,
+    lead_id: Optional[int],
+    media_info: dict
+):
+    """
+    Persiste o conteúdo extraído de mídia/documento recebido via webhook de memória
+    na tabela UserMemoryModel para que o agente tenha acesso mesmo após muitas interações.
+    """
+    if not media_info or not media_info.get("has_document_content"):
+        return
+
+    doc_content = str(media_info.get("document_content") or "").strip()
+    if not doc_content:
+        return
+
+    filename = str(media_info.get("filename") or "").strip()
+    base_msg = str(media_info.get("base_message") or "").strip()
+    tpl_name = str(media_info.get("template_name") or "").strip()
+
+    from models import UserMemoryModel
+    from sqlalchemy import select
+
+    mem_key = f"Conteúdo da Mídia Enviada ({filename})" if filename else "Conteúdo da Mídia Enviada"
+    source_msg = base_msg or tpl_name or "Webhook de Memória (Mídia)"
+
+    clean_phone = normalize_phone(phone)
+    sids = []
+    if lead_id is not None:
+        sids.append(str(lead_id))
+    if clean_phone:
+        sids.append(f"tel_{clean_phone}")
+        sids.append(clean_phone)
+    sids = list(dict.fromkeys([s for s in sids if s]))
+
+    try:
+        for sid in sids:
+            stmt = select(UserMemoryModel).where(
+                UserMemoryModel.session_id == sid,
+                UserMemoryModel.key == mem_key
+            )
+            res = await db.execute(stmt)
+            existing = res.scalars().first()
+            if existing:
+                existing.value = doc_content
+                existing.source_message = source_msg
+            else:
+                db.add(UserMemoryModel(
+                    session_id=sid,
+                    key=mem_key,
+                    value=doc_content,
+                    source_message=source_msg
+                ))
+        await db.commit()
+        logger.info(f"💾 [MEMÓRIA DE MÍDIA] Conteúdo do documento '{filename or 'Anexo'}' salvo em UserMemoryModel para {clean_phone} (sids={sids})")
+    except Exception as e_mem:
+        logger.error(f"Erro ao salvar memória de mídia em UserMemoryModel para {clean_phone}: {e_mem}")
+

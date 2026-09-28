@@ -13,6 +13,8 @@ export const getStatusBadge = (status) => {
     switch (status) {
         case 'completed':
             return { label: '✓ Disparado', bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '#10b981' };
+        case 'skipped':
+            return { label: '⏭️ Dispensado', bg: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '#f59e0b' };
         case 'active':
             return { label: '⏳ Aguardando Envio', bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '#3b82f6' };
         case 'cancelled':

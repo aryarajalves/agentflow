@@ -56,12 +56,12 @@ def retrieve_context_history(db, event, db_agent, raw_phone, clean_phone, event_
                 
                 if is_agent_event:
                     agent_text = (pe.agent_response or "").strip()
-                    if not agent_text and pe.mensagem:
+                    if (not agent_text or agent_text.startswith("Modo Silencioso")) and pe.mensagem:
                         raw_msg = pe.mensagem.strip()
                         if not (raw_msg.startswith("🔄") or raw_msg.startswith("[Follow-Up") or raw_msg.startswith("[Disparo")):
                             agent_text = raw_msg
                     
-                    if agent_text and agent_text not in seen_msgs:
+                    if agent_text and not agent_text.startswith("Modo Silencioso") and agent_text not in seen_msgs:
                         history.append({"role": "assistant", "content": agent_text})
                         seen_msgs.add(agent_text)
                 else:
@@ -72,7 +72,7 @@ def retrieve_context_history(db, event, db_agent, raw_phone, clean_phone, event_
                             seen_msgs.add(user_msg)
                     if pe.agent_response:
                         resp_clean = pe.agent_response.strip()
-                        if resp_clean and resp_clean not in seen_msgs:
+                        if resp_clean and not resp_clean.startswith("Modo Silencioso") and resp_clean not in seen_msgs:
                             history.append({"role": "assistant", "content": resp_clean})
                             seen_msgs.add(resp_clean)
 

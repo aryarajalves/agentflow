@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import LeadFilterBar from './LeadFilterBar';
 import LeadCard from './LeadCard';
 import LeadSelectionBar from './LeadSelectionBar';
@@ -84,15 +84,20 @@ const LeadsModal = ({
         return `${h}h ${m}m ${s}s`;
     };
 
-    // Bloquear scroll ao montar o modal
+    // Bloquear scroll ao montar o modal e limpar seleção apenas ao desmontar (fechar modal)
+    const onClearSelectionRef = React.useRef(onClearSelection);
+    useEffect(() => {
+        onClearSelectionRef.current = onClearSelection;
+    }, [onClearSelection]);
+
     useEffect(() => {
         const originalStyle = window.getComputedStyle(document.body).overflow;
         document.body.style.overflow = 'hidden';
         return () => { 
             document.body.style.overflow = originalStyle;
-            if (onClearSelection) onClearSelection();
+            if (onClearSelectionRef.current) onClearSelectionRef.current();
         };
-    }, [onClearSelection]);
+    }, []);
 
     const toggleExpandLead = (id) => {
         setExpandedLeadId(prev => prev === id ? null : id);

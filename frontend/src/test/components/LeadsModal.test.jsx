@@ -248,4 +248,35 @@ describe('LeadsModal Component', () => {
         fireEvent.click(screen.getByText('🔄 Sincronizar Tudo'));
         expect(onSyncAll).toHaveBeenCalledTimes(1);
     });
+
+    it('não deve chamar onClearSelection em re-renderizações após selecionar contatos, chamando apenas ao desmontar o modal', () => {
+        const firstClearSelection = vi.fn();
+        const secondClearSelection = vi.fn();
+
+        const { rerender, unmount } = render(
+            <LeadsModal
+                {...defaultProps}
+                selectedLeads={new Set()}
+                onClearSelection={firstClearSelection}
+            />
+        );
+
+        // Simula re-render após clicar em "Selecionar Todos" (nova referência de selectedLeads e onClearSelection)
+        rerender(
+            <LeadsModal
+                {...defaultProps}
+                selectedLeads={new Set([101, 102])}
+                onClearSelection={secondClearSelection}
+            />
+        );
+
+        // Nenhum dos callbacks de limpeza deve ter sido disparado durante a re-renderização
+        expect(firstClearSelection).not.toHaveBeenCalled();
+        expect(secondClearSelection).not.toHaveBeenCalled();
+
+        // Ao fechar/desmontar o modal, deve limpar a seleção uma única vez
+        unmount();
+        expect(secondClearSelection).toHaveBeenCalledTimes(1);
+    });
 });
+

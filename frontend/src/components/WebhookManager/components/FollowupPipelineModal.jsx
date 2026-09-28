@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFollowupPipeline } from './FollowupPipelineModal/useFollowupPipeline';
 import PipelineHeader from './FollowupPipelineModal/PipelineHeader';
 import PipelineStepItem from './FollowupPipelineModal/PipelineStepItem';
+import FollowupActionConfirmModal from './FollowupPipelineModal/FollowupActionConfirmModal';
 import '../styles/WebhookManager.css';
 
 const FollowupPipelineModal = ({ lead, webhook, onClose }) => {
@@ -9,8 +10,56 @@ const FollowupPipelineModal = ({ lead, webhook, onClose }) => {
         pipelineData,
         loading,
         error,
-        fetchPipeline
+        fetchPipeline,
+        actionLoading,
+        triggerNow,
+        skipStep
     } = useFollowupPipeline(lead, webhook);
+
+    // Estado do Modal de Confirmação
+    const [confirmModalConfig, setConfirmModalConfig] = useState({
+        isOpen: false,
+        actionType: null, // 'trigger_now' | 'skip_step'
+        targetStep: null
+    });
+
+    const handleOpenTriggerNow = (step) => {
+        setConfirmModalConfig({
+            isOpen: true,
+            actionType: 'trigger_now',
+            targetStep: step
+        });
+    };
+
+    const handleOpenSkipStep = (step) => {
+        setConfirmModalConfig({
+            isOpen: true,
+            actionType: 'skip_step',
+            targetStep: step
+        });
+    };
+
+    const handleCloseConfirmModal = () => {
+        if (actionLoading) return;
+        setConfirmModalConfig({
+            isOpen: false,
+            actionType: null,
+            targetStep: null
+        });
+    };
+
+    const handleExecuteAction = async () => {
+        if (!confirmModalConfig.targetStep) return;
+        let ok = false;
+        if (confirmModalConfig.actionType === 'trigger_now') {
+            ok = await triggerNow(confirmModalConfig.targetStep);
+        } else if (confirmModalConfig.actionType === 'skip_step') {
+            ok = await skipStep(confirmModalConfig.targetStep);
+        }
+        if (ok) {
+            handleCloseConfirmModal();
+        }
+    };
 
     const overallStatus = pipelineData?.overall_status || 'pending';
     const steps = pipelineData?.steps || [];
@@ -76,6 +125,8 @@ const FollowupPipelineModal = ({ lead, webhook, onClose }) => {
                                     step={step}
                                     index={index}
                                     isLast={index === steps.length - 1}
+                                    onTriggerNow={handleOpenTriggerNow}
+                                    onSkipStep={handleOpenSkipStep}
                                 />
                             ))}
                         </div>
@@ -94,6 +145,17 @@ const FollowupPipelineModal = ({ lead, webhook, onClose }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Popup Centralizado de Confirmação de Ações Manuais */}
+            <FollowupActionConfirmModal
+                isOpen={confirmModalConfig.isOpen}
+                actionType={confirmModalConfig.actionType}
+                stepNumber={confirmModalConfig.targetStep?.step_number || (leadInfo?.followup_step !== undefined ? leadInfo.followup_step + 1 : 1)}
+                leadName={leadInfo?.contato_nome || leadInfo?.nome || leadInfo?.telefone}
+                loading={actionLoading}
+                onConfirm={handleExecuteAction}
+                onClose={handleCloseConfirmModal}
+            />
         </div>
     );
 };

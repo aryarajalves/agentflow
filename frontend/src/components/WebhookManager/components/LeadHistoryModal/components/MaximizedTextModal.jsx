@@ -18,20 +18,23 @@ const MaximizedTextModal = ({ text, onClose }) => {
             }}
         >
             <div 
-                className="premium-modal-content" 
+                className="premium-modal-content compact-text-modal" 
                 onClick={e => e.stopPropagation()}
                 style={{ 
-                    maxWidth: '600px', 
+                    maxWidth: '620px', 
                     width: '90%', 
-                    padding: '2rem', 
-                    borderRadius: '16px', 
+                    height: 'auto',
+                    maxHeight: '85vh',
+                    padding: '1.75rem', 
+                    borderRadius: '20px', 
                     background: '#0f172a', 
                     border: '1px solid rgba(255,255,255,0.1)', 
                     boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '1.5rem',
-                    position: 'relative'
+                    gap: '1.25rem',
+                    position: 'relative',
+                    boxSizing: 'border-box'
                 }}
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
@@ -60,17 +63,19 @@ const MaximizedTextModal = ({ text, onClose }) => {
                 </div>
                 
                 <div 
+                    className="custom-scrollbar"
                     style={{ 
-                        maxHeight: '400px', 
+                        maxHeight: '60vh', 
                         overflowY: 'auto', 
                         color: '#e2e8f0', 
                         fontSize: '0.95rem', 
                         lineHeight: '1.6', 
                         whiteSpace: 'pre-wrap', 
-                        background: 'rgba(0,0,0,0.2)', 
+                        background: 'rgba(0,0,0,0.25)', 
                         padding: '1.25rem', 
                         borderRadius: '12px',
-                        border: '1px solid rgba(255,255,255,0.03)'
+                        border: '1px solid rgba(255,255,255,0.04)',
+                        wordBreak: 'break-word'
                     }}
                 >
                     {text}

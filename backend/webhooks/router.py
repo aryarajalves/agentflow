@@ -63,7 +63,9 @@ from .leads import (
     delete_all_leads,
     sync_all_leads_endpoint,
     get_lead_followup_pipeline,
-    get_lead_variables
+    get_lead_variables,
+    trigger_lead_followup_now,
+    skip_lead_followup_step
 )
 from .tools import (
     simulate_webhook_load,
@@ -116,6 +118,8 @@ router.add_api_route("/{webhook_id}/leads/import-status", get_chat_import_status
 router.add_api_route("/{webhook_id}/leads/cancel-import", cancel_chat_import, methods=["POST"])
 router.add_api_route("/{webhook_id}/leads/{lead_id}/followup-pipeline", get_lead_followup_pipeline, methods=["GET"])
 router.add_api_route("/{webhook_id}/leads/{lead_id}/variables", get_lead_variables, methods=["GET"])
+router.add_api_route("/{webhook_id}/leads/{lead_id}/followup/trigger-now", trigger_lead_followup_now, methods=["POST"])
+router.add_api_route("/{webhook_id}/leads/{lead_id}/followup/skip-step", skip_lead_followup_step, methods=["POST"])
 
 # 5. Tools & Simulation
 router.add_api_route("/{webhook_id}/simulate-load", simulate_webhook_load, methods=["POST"], status_code=200)

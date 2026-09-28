@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { api } from '../../../../api/client';
 import { showToast } from '../../utils/helpers';
 
@@ -6,21 +6,21 @@ export const useLeadsSelection = (leadsModal) => {
     const [selectedLeads, setSelectedLeads] = useState(new Set());
     const [isSelectingAllTotal, setIsSelectingAllTotal] = useState(false);
 
-    const toggleSelectLead = (id) => {
+    const toggleSelectLead = useCallback((id) => {
         setSelectedLeads(prev => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
             return next;
         });
-    };
+    }, []);
 
-    const toggleSelectAllLeads = (force) => {
+    const toggleSelectAllLeads = useCallback((force) => {
         if (!leadsModal?.leads) return;
         const allIdsOnPage = leadsModal.leads.map(l => l.id);
-        const allSelected = typeof force === 'boolean' ? !force : allIdsOnPage.every(id => selectedLeads.has(id));
-        
+
         setSelectedLeads(prev => {
+            const allSelected = typeof force === 'boolean' ? !force : allIdsOnPage.every(id => prev.has(id));
             const next = new Set(prev);
             if (allSelected) {
                 allIdsOnPage.forEach(id => next.delete(id));
@@ -29,9 +29,9 @@ export const useLeadsSelection = (leadsModal) => {
             }
             return next;
         });
-    };
+    }, [leadsModal?.leads]);
 
-    const handleSelectAllTotalLeads = async () => {
+    const handleSelectAllTotalLeads = useCallback(async () => {
         const webhook = leadsModal?.webhook;
         if (!webhook) return;
         setIsSelectingAllTotal(true);
@@ -59,11 +59,19 @@ export const useLeadsSelection = (leadsModal) => {
         } finally {
             setIsSelectingAllTotal(false);
         }
-    };
+    }, [
+        leadsModal?.webhook,
+        leadsModal?.search,
+        leadsModal?.podeEnviar,
+        leadsModal?.janelaAberta,
+        leadsModal?.semMensagens,
+        leadsModal?.dateStart,
+        leadsModal?.dateEnd
+    ]);
 
-    const handleClearAllSelectedLeads = () => {
+    const handleClearAllSelectedLeads = useCallback(() => {
         setSelectedLeads(new Set());
-    };
+    }, []);
 
     return {
         selectedLeads,

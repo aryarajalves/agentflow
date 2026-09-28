@@ -22,6 +22,11 @@ from .variables import (
     router as variables_router,
     get_lead_variables,
 )
+from .followup_actions import (
+    router as followup_actions_router,
+    trigger_lead_followup_now,
+    skip_lead_followup_step,
+)
 
 __all__ = [
     "listing_router",
@@ -38,4 +43,7 @@ __all__ = [
     "get_lead_followup_pipeline",
     "variables_router",
     "get_lead_variables",
+    "followup_actions_router",
+    "trigger_lead_followup_now",
+    "skip_lead_followup_step",
 ]

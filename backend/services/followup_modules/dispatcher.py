@@ -166,7 +166,7 @@ def _generate_followup_message(
     return fallback_msg, None
 
 
-def save_followup_event(db, config_id, conta_id, conversa_id, telefone, nome, message, steps, status, step_index: int = 0):
+def save_followup_event(db, config_id, conta_id, conversa_id, telefone, nome, message, steps, status, step_index: int = 0, message_type: str = "text"):
     """Registra evento de log em webhook_events para que apareça no histórico do lead no frontend e conste como memória."""
     try:
         if status == "processed" and message:
@@ -177,7 +177,7 @@ def save_followup_event(db, config_id, conta_id, conversa_id, telefone, nome, me
                     processing_steps, created_at
                 ) VALUES (
                     :wid, :conta, :conv, :tel, :nome,
-                    :msg, :resp, 'Agente', 'processed', 'followup', 'text',
+                    :msg, :resp, 'Agente', 'processed', 'followup', :message_type,
                     :steps, :created_at
                 )
             """), {
@@ -188,6 +188,7 @@ def save_followup_event(db, config_id, conta_id, conversa_id, telefone, nome, me
                 "nome": nome or telefone,
                 "msg": f"🔄 [Follow-Up Passo #{step_index + 1}]",
                 "resp": message,
+                "message_type": message_type,
                 "steps": json.dumps(steps, ensure_ascii=False),
                 "created_at": datetime.utcnow()
             })
@@ -210,18 +211,19 @@ async def dispatch_single_lead_followup(
     delay_minutes: int,
     elapsed_minutes: float,
     lead_info: dict,
-    apply_jitter: bool = True
+    apply_jitter: bool = True,
+    is_manual: bool = False
 ) -> bool:
     """
     Processa e dispara o follow-up para um único lead de forma segura, assíncrona e com Jitter Anti-Ban.
     """
-    lead_id = lead_info["id"]
-    conta_id = lead_info["conta_id"]
-    conversa_id = lead_info["conversa_id"]
-    telefone = lead_info["telefone"]
-    nome = lead_info["contato_nome"]
-    lead_msg = lead_info["mensagem"]
-    agent_resp = lead_info["ultima_resposta_agente"]
+    lead_id = lead_info.get("id")
+    conta_id = lead_info.get("conta_id") or "1"
+    conversa_id = lead_info.get("conversa_id")
+    telefone = lead_info.get("telefone") or ""
+    nome = lead_info.get("contato_nome") or lead_info.get("nome") or telefone
+    lead_msg = lead_info.get("mensagem")
+    agent_resp = lead_info.get("ultima_resposta_agente")
 
     # 1. Aplicação do Teste A/B de Copy
     step, ab_variation = resolve_ab_variation(step_raw, telefone)
@@ -238,11 +240,15 @@ async def dispatch_single_lead_followup(
         eff_conta_id = str(conta_id or zv_client_cfg or "1")
         eff_conversa_id = str(conversa_id or "1")
 
+        eval_step_title = f"⚡ Disparo Manual: Follow-Up {step_index + 1}" if is_manual else f"Avaliando Disparo: Follow-Up {step_index + 1}"
+        eval_step_detail = "Disparo acionado manualmente pelo operador no painel." if is_manual else (f"Tempo decorrido: {int(elapsed_minutes)}min úteis (Espera: {delay_minutes}min)." + (f" Jitter Anti-Ban: {jitter_delay}s aplicado." if jitter_delay > 0 else ""))
+
         pipeline_steps = [
             {
-                "step": f"Avaliando Disparo: Follow-Up {step_index + 1}",
-                "detail": f"Tempo decorrido: {int(elapsed_minutes)}min úteis (Espera: {delay_minutes}min)." + (f" Jitter Anti-Ban: {jitter_delay}s aplicado." if jitter_delay > 0 else ""),
+                "step": eval_step_title,
+                "detail": eval_step_detail,
                 "timestamp": datetime.utcnow().isoformat(),
+                "is_manual": is_manual,
                 "metadata": {"ab_variation": ab_variation} if ab_variation else None
             }
         ]
@@ -317,8 +323,37 @@ async def dispatch_single_lead_followup(
                     "parameters": [{"type": "text", "text": resolve_val(template_variables.get(bk, ""))} for bk in body_var_keys]
                 })
 
-            processed_components = components_payload if components_payload else (step.get("template_components") or [])
-            message = f"[Template Oficial]: {template_name}"
+            # ZapVoice e Meta WhatsApp Cloud API exigem que 'components' contenha APENAS
+            # substituições de parâmetros (parameters). Se não houver variáveis ou mídia,
+            # deve ser enviado como lista vazia [], nunca a estrutura crua do template.
+            processed_components = components_payload if components_payload else []
+
+            # Extrair o texto real do corpo do template resolvendo variáveis
+            template_text = ""
+            raw_comps = step.get("template_components") or []
+            if isinstance(raw_comps, str):
+                try:
+                    raw_comps = json.loads(raw_comps)
+                except Exception:
+                    raw_comps = []
+
+            for comp in raw_comps:
+                if isinstance(comp, dict) and comp.get("type", "").upper() == "BODY":
+                    body_txt = comp.get("text", "")
+                    for bk in body_var_keys:
+                        try:
+                            idx_str = bk.split("_")[1]
+                            val = resolve_val(template_variables.get(bk, ""))
+                            body_txt = body_txt.replace(f"{{{{{idx_str}}}}}", val)
+                        except Exception:
+                            pass
+                    template_text = body_txt.strip()
+                    break
+
+            if not template_text:
+                template_text = step.get("fixed_message") or f"[Template Oficial]: {template_name}"
+
+            message = template_text
             pipeline_steps.append({
                 "step": "📱 Disparando Template WhatsApp Oficial" + (f" (Variação {ab_variation})" if ab_variation else ""),
                 "detail": f"Template: '{template_name}' ({template_language}) via API Oficial ZapVoice.",
@@ -449,7 +484,7 @@ async def dispatch_single_lead_followup(
                 except Exception as e_lbl:
                     logger.warning(f"[FollowUp] Falha ao aplicar etiqueta no ZapVoice: {e_lbl}")
 
-            save_followup_event(db, config_id, eff_conta_id, eff_conversa_id, telefone, nome, message, pipeline_steps, "processed", step_index=step_index)
+            save_followup_event(db, config_id, eff_conta_id, eff_conversa_id, telefone, nome, message, pipeline_steps, "processed", step_index=step_index, message_type="template" if step_type == "whatsapp_template" else "text")
 
             # Custo financeiro
             try:
@@ -481,7 +516,7 @@ async def dispatch_single_lead_followup(
         else:
             logger.warning(f"[FollowUp] Falha ao enviar para {telefone}: HTTP {status_code_res}")
             pipeline_steps.append({"step": "Erro de Envio no Servidor", "detail": f"Status HTTP {status_code_res} ao enviar.", "timestamp": datetime.utcnow().isoformat()})
-            save_followup_event(db, config_id, eff_conta_id, eff_conversa_id, telefone, nome, message, pipeline_steps, "error", step_index=step_index)
+            save_followup_event(db, config_id, eff_conta_id, eff_conversa_id, telefone, nome, message, pipeline_steps, "error", step_index=step_index, message_type="template" if step_type == "whatsapp_template" else "text")
             return False
     finally:
         db.close()

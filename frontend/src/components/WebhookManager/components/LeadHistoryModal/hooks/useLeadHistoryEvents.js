@@ -129,6 +129,7 @@ export const useLeadHistoryEvents = (lead, webhook) => {
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'new_event' && data.webhook_id === webhook.id) {
+                            if (data.event?.status === 'skipped') return;
                             const eventPhone = (data.event.telefone || '').replace('+', '');
                             if (eventPhone === cleanPhone) {
                                 setEvents(prev => {

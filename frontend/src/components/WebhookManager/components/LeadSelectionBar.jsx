@@ -27,22 +27,26 @@ const LeadSelectionBar = ({
             transition: 'all 0.2s ease'
         }}>
             {/* Checkbox de Selecionar Página Atual */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div 
+                onClick={() => toggleSelectAllLeads()}
+                title={isAllOnPageSelected ? "Desmarcar contatos da página" : "Selecionar contatos da página atual"}
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none', gap: '0.6rem' }}
+            >
                 <div
-                    onClick={() => toggleSelectAllLeads()}
-                    title={isAllOnPageSelected ? "Desmarcar contatos da página" : "Selecionar contatos da página atual"}
                     style={{
-                        width: '20px', height: '20px', borderRadius: '6px', border: '2px solid rgba(255,255,255,0.15)',
-                        background: (isAllOnPageSelected || isAllTotalSelected) ? '#6366f1' : 'rgba(255,255,255,0.03)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginRight: '0.75rem',
-                        transition: 'all 0.2s ease'
+                        width: '24px', height: '24px', borderRadius: '7px', 
+                        border: `2px solid ${(isAllOnPageSelected || isAllTotalSelected) ? '#6366f1' : 'rgba(255,255,255,0.3)'}`,
+                        background: (isAllOnPageSelected || isAllTotalSelected) ? '#6366f1' : 'rgba(255,255,255,0.05)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: (isAllOnPageSelected || isAllTotalSelected) ? '0 0 12px rgba(99, 102, 241, 0.5)' : 'none',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0
                     }}
                 >
-                    {(isAllOnPageSelected || isAllTotalSelected) && <span style={{ color: '#fff', fontSize: '0.7rem' }}>✓</span>}
+                    {(isAllOnPageSelected || isAllTotalSelected) && <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 800 }}>✓</span>}
                 </div>
                 <span 
-                    onClick={() => toggleSelectAllLeads()}
-                    style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                    style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 700 }}
                 >
                     Selecionar Todos
                 </span>

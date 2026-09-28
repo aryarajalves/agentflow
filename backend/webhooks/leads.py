@@ -28,6 +28,9 @@ from .leads_modules import (
     get_lead_followup_pipeline,
     variables_router,
     get_lead_variables,
+    followup_actions_router,
+    trigger_lead_followup_now,
+    skip_lead_followup_step,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +43,7 @@ router.include_router(listing_router)
 router.include_router(sync_router)
 router.include_router(pipeline_info_router)
 router.include_router(variables_router)
+router.include_router(followup_actions_router)
 
 __all__ = [
     "router",
@@ -54,4 +58,7 @@ __all__ = [
     "sync_all_leads_endpoint",
     "get_lead_followup_pipeline",
     "get_lead_variables",
+    "followup_actions_router",
+    "trigger_lead_followup_now",
+    "skip_lead_followup_step",
 ]

@@ -40,11 +40,58 @@ export const useFollowupPipeline = (lead, webhook) => {
         };
     }, []);
 
+    const [actionLoading, setActionLoading] = useState(false);
+
+    const triggerNow = useCallback(async (step) => {
+        if (!webhook?.id || !lead?.id) return;
+        setActionLoading(true);
+        try {
+            const res = await api.post(`/webhooks/${webhook.id}/leads/${lead.id}/followup/trigger-now`, {});
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || 'Falha ao disparar follow-up');
+            }
+            showToast(data.message || 'Follow-up disparado com sucesso!', 'success');
+            await fetchPipeline();
+            return true;
+        } catch (e) {
+            console.error('Erro ao disparar follow-up imediatamente:', e);
+            showToast(e.message || 'Erro ao disparar follow-up', 'error');
+            return false;
+        } finally {
+            setActionLoading(false);
+        }
+    }, [webhook?.id, lead?.id, fetchPipeline]);
+
+    const skipStep = useCallback(async (step) => {
+        if (!webhook?.id || !lead?.id) return;
+        setActionLoading(true);
+        try {
+            const res = await api.post(`/webhooks/${webhook.id}/leads/${lead.id}/followup/skip-step`, {});
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || 'Falha ao pular passo de follow-up');
+            }
+            showToast(data.message || 'Passo pulado com sucesso!', 'success');
+            await fetchPipeline();
+            return true;
+        } catch (e) {
+            console.error('Erro ao pular passo de follow-up:', e);
+            showToast(e.message || 'Erro ao pular passo', 'error');
+            return false;
+        } finally {
+            setActionLoading(false);
+        }
+    }, [webhook?.id, lead?.id, fetchPipeline]);
+
     return {
         pipelineData,
         loading,
         error,
-        fetchPipeline
+        fetchPipeline,
+        actionLoading,
+        triggerNow,
+        skipStep
     };
 };
 

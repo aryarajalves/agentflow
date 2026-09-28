@@ -196,10 +196,33 @@ async def get_lead_followup_pipeline(webhook_id: int, lead_id: int, db: AsyncSes
         if idx < len(executed_events):
             dispatched_event = executed_events[idx]
 
+        is_step_skipped = False
+        is_step_manual = False
+        if dispatched_event:
+            ev_resp = str(dispatched_event.get("agent_response") or "")
+            ev_msg = str(dispatched_event.get("mensagem") or "")
+            ev_status = str(dispatched_event.get("status") or "")
+            ev_steps = str(dispatched_event.get("processing_steps") or "")
+            if (
+                ev_status == "skipped"
+                or "pulado manualmente" in ev_resp.lower()
+                or "pulado manualmente" in ev_msg.lower()
+                or "pulado manualmente" in ev_steps.lower()
+                or '"is_skipped": true' in ev_steps.lower()
+            ):
+                is_step_skipped = True
+
+            if (
+                "disparo manual" in ev_steps.lower()
+                or '"is_manual": true' in ev_steps.lower()
+                or "disparo acionado manualmente" in ev_steps.lower()
+            ):
+                is_step_manual = True
+
         if current_step == -1:
             step_status = "cancelled"
         elif idx < current_step:
-            step_status = "completed"
+            step_status = "skipped" if is_step_skipped else "completed"
         elif idx == current_step:
             if not config.followup_enabled:
                 step_status = "disabled"
@@ -255,6 +278,7 @@ async def get_lead_followup_pipeline(webhook_id: int, lead_id: int, db: AsyncSes
             "template_header_media": step_cfg.get("template_header_media", ""),
             "status": step_status,
             "dispatched_event": dispatched_event,
+            "is_manual": is_step_manual,
             "started_at": started_at,
             "estimated_dispatch_at": estimated_dispatch_at,
             "reset_by_lead_message": reset_by_lead_message,

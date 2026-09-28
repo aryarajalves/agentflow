@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import EventCostBadge from '../EventCostBadge';
 import AiStatusBadge from './AiStatusBadge';
 
@@ -54,7 +54,7 @@ const ResponseAiCell = ({ event, isAgent, isGrouped, message, setMaximizedText }
                     <div style={{ marginBottom: '4px' }}>
                         <EventCostBadge event={event} />
                     </div>
-                    <div style={{ maxHeight: '60px', overflowY: 'auto', lineHeight: '1.4', paddingRight: hasLongText ? '24px' : '0' }}>
+                    <div style={{ maxHeight: '90px', overflowY: 'auto', lineHeight: '1.4', whiteSpace: 'pre-wrap', paddingRight: hasLongText ? '24px' : '0' }}>
                         {textToDisplay}
                     </div>
                     {hasLongText && (

@@ -1,10 +1,11 @@
 import React from 'react';
 import { formatDelay, getStatusBadge, formatDateTime, formatRelativeSchedule } from './followupPipelineHelpers';
 
-export const PipelineStepItem = ({ step, index, isLast }) => {
+export const PipelineStepItem = ({ step, index, isLast, onTriggerNow, onSkipStep }) => {
     const badge = getStatusBadge(step.status);
     const isCurrent = step.status === 'active';
     const isDone = step.status === 'completed';
+    const isSkipped = step.status === 'skipped';
 
     return (
         <div 
@@ -23,7 +24,7 @@ export const PipelineStepItem = ({ step, index, isLast }) => {
                         top: '40px',
                         bottom: '-25px',
                         width: '2px',
-                        background: isDone ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                        background: isDone ? '#10b981' : isSkipped ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)',
                         zIndex: 1
                     }}
                 />
@@ -35,20 +36,20 @@ export const PipelineStepItem = ({ step, index, isLast }) => {
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    background: isDone ? '#10b981' : isCurrent ? '#3b82f6' : 'rgba(255, 255, 255, 0.05)',
-                    border: `2px solid ${isDone ? '#34d399' : isCurrent ? '#60a5fa' : 'rgba(255, 255, 255, 0.1)'}`,
+                    background: isDone ? '#10b981' : isSkipped ? '#d97706' : isCurrent ? '#3b82f6' : 'rgba(255, 255, 255, 0.05)',
+                    border: `2px solid ${isDone ? '#34d399' : isSkipped ? '#fbbf24' : isCurrent ? '#60a5fa' : 'rgba(255, 255, 255, 0.1)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '1rem',
+                    fontSize: isSkipped ? '0.9rem' : '1rem',
                     fontWeight: 800,
                     color: '#fff',
                     zIndex: 2,
-                    boxShadow: isCurrent ? '0 0 15px rgba(59, 130, 246, 0.5)' : isDone ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none',
+                    boxShadow: isCurrent ? '0 0 15px rgba(59, 130, 246, 0.5)' : isDone ? '0 0 10px rgba(16, 185, 129, 0.3)' : isSkipped ? '0 0 10px rgba(245, 158, 11, 0.3)' : 'none',
                     flexShrink: 0
                 }}
             >
-                {isDone ? '✓' : step.step_number}
+                {isDone ? '✓' : isSkipped ? '⏭' : step.step_number}
             </div>
 
             {/* Card do Step */}
@@ -88,7 +89,7 @@ export const PipelineStepItem = ({ step, index, isLast }) => {
                         color: badge.color,
                         border: `1px solid ${badge.border}`
                     }}>
-                        {badge.label}
+                        {step.is_manual ? '⚡ Disparado Manualmente' : badge.label}
                     </span>
                 </div>
 
@@ -115,17 +116,23 @@ export const PipelineStepItem = ({ step, index, isLast }) => {
                     )}
                 </div>
 
-                {/* Evento disparado (se houver) */}
+                {/* Evento disparado ou dispensado (se houver) */}
                 {step.dispatched_event && (
                     <div style={{
                         marginTop: '0.75rem',
                         padding: '0.75rem 1rem',
-                        background: 'rgba(16, 185, 129, 0.08)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        background: isSkipped ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                        border: `1px solid ${isSkipped ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.2)'}`,
                         borderRadius: '8px'
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#34d399', marginBottom: '0.35rem' }}>
-                            <span>🚀 Disparado com Sucesso</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: isSkipped ? '#fbbf24' : '#34d399', marginBottom: '0.35rem' }}>
+                            <span>
+                                {isSkipped 
+                                    ? '⏭️ Passo Dispensado Manualmente' 
+                                    : step.is_manual 
+                                        ? '⚡ Disparado Manualmente com Sucesso' 
+                                        : '🚀 Disparado com Sucesso'}
+                            </span>
                             <span>{new Date(step.dispatched_event.created_at).toLocaleString('pt-BR')}</span>
                         </div>
                         {step.dispatched_event.agent_response && (
@@ -201,6 +208,61 @@ export const PipelineStepItem = ({ step, index, isLast }) => {
                                 </span>
                             </div>
                         )}
+
+                        {/* Botões de Ação Manual no Passo Ativo */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            marginTop: '0.25rem',
+                            flexWrap: 'wrap'
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => onTriggerNow && onTriggerNow(step)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.45rem',
+                                    padding: '0.5rem 0.95rem',
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%)',
+                                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                                    color: '#34d399',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                title="Iniciar o disparo imediato da mensagem deste passo para este contato"
+                            >
+                                <span>🚀</span>
+                                <span>Disparar Agora</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => onSkipStep && onSkipStep(step)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.45rem',
+                                    padding: '0.5rem 0.95rem',
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.2) 100%)',
+                                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                                    color: '#fbbf24',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                title="Pular este passo sem enviar mensagem e avançar para o próximo"
+                            >
+                                <span>⏭️</span>
+                                <span>Pular Passo</span>
+                            </button>
+                        </div>
                     </div>
                 )}
 

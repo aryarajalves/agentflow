@@ -9,12 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import get_db
-from core.timezone import get_now_br
+from core.timezone import get_now_br, get_now_utc
 from core.websocket import manager
 from models import WebhookConfigModel, WebhookEventModel
 from webhook_tasks import process_webhook_automation, sync_memory_to_vector, process_media_content_task
-from .utils import normalize_phone, get_value_by_path
-from .service import ensure_leads_table, upsert_lead, handle_keyword_handoffs
+from .utils import normalize_phone, get_value_by_path, extract_and_compose_media_memory
+from .service import ensure_leads_table, upsert_lead, handle_keyword_handoffs, save_media_memory_to_user_memory
 from .import_chat_modules.helpers import is_system_or_badge_message
 
 logger = logging.getLogger(__name__)
@@ -116,6 +116,9 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
         )
         contato_nome_val = str(zv_name).strip() if zv_name and str(zv_name).strip() and str(zv_name).strip().lower() not in ("none", "null", "contato desconhecido") else None
 
+        raw_zap_msg = str(zap_msg.get("template_content") or zap_msg.get("content") or "")
+        media_info = extract_and_compose_media_memory(body, base_message=raw_zap_msg)
+
         extracted = {
             "conta_id": str(body.get("client_id") or ""),
             "inbox_id": str(body.get("client_id") or ""),
@@ -125,9 +128,9 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
             "contato_id": str(zap_contact.get("phone") or ""),
             "telefone": phone,
             "contato_nome": contato_nome_val,
-            "mensagem": str(zap_msg.get("template_content") or zap_msg.get("content") or ""),
+            "mensagem": media_info["composed_message"],
             "labels": labels_str,
-            "link": media_url_raw,
+            "link": media_url_raw or media_info["media_url"],
             "dono": "agente" if is_out else "usuario",
             "message_type": content_type
         }
@@ -199,6 +202,9 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
         )
         contato_nome_val = str(cw_name).strip() if cw_name and str(cw_name).strip() and str(cw_name).strip().lower() not in ("none", "null", "contato desconhecido") else None
 
+        raw_body_msg = str(body.get("template_content") or body.get("content") or (body.get("message", {}) or {}).get("content") or "")
+        media_info = extract_and_compose_media_memory(body, base_message=raw_body_msg)
+
         extracted = {
             "conta_id": str(body.get("account_id") or account.get("id") or conv.get("account_id") or ""),
             "inbox_id": str(inbox.get("id") or body.get("inbox_id") or conv.get("inbox_id") or ""),
@@ -208,9 +214,9 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
             "contato_id": str(sender.get("id") or body.get("contact_id") or ""),
             "telefone": phone,
             "contato_nome": contato_nome_val,
-            "mensagem": str(body.get("template_content") or body.get("content") or (body.get("message", {}) or {}).get("content") or ""),
+            "mensagem": media_info["composed_message"],
             "labels": labels_str,
-            "link": media_link,
+            "link": media_link or media_info["media_url"],
             "dono": "agente" if is_out else "usuario",
             "message_type": content_type
         }
@@ -243,11 +249,15 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
             logger.info(f"⏭️ Mensagem de saída de eco pós-reset ignorada para evitar recriação do lead {phone}")
             return {"ok": True, "status": "outgoing_ignored"}
 
+        lead_id_out = None
         try:
             await ensure_leads_table(config.leads_table)
-            await upsert_lead(config.leads_table, {**extracted, "dono": "agente"}, config.id)
+            lead_id_out = await upsert_lead(config.leads_table, {**extracted, "dono": "agente"}, config.id)
         except Exception as e:
             logger.error(f"Erro ao inserir lead de saída: {e}")
+
+        if media_info.get("has_document_content"):
+            await save_media_memory_to_user_memory(db, phone, lead_id_out, media_info)
 
         # Ingerir mensagem de saída (Template ou Atendente) na tabela webhook_events para histórico e memória da IA
         msg_out_text = (extracted.get("mensagem") or "").strip()
@@ -266,6 +276,30 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
                     )
                     if dup_check.scalar_one_or_none():
                         already_exists = True
+
+                # Deduplicação inteligente de ecos (Template / Follow-Up / Atendente):
+                # Se nos últimos 60 segundos já foi registrado um evento para este telefone
+                # com o mesmo texto ou se o texto faz parte de um evento recente do agente/followup
+                if not already_exists and msg_out_text:
+                    cutoff_dt = get_now_utc() - timedelta(seconds=60)
+                    recent_events_res = await db.execute(
+                        select(WebhookEventModel.agent_response, WebhookEventModel.mensagem).where(
+                            WebhookEventModel.webhook_config_id == config.id,
+                            WebhookEventModel.telefone == phone,
+                            WebhookEventModel.created_at >= cutoff_dt
+                        ).order_by(WebhookEventModel.created_at.desc()).limit(10)
+                    )
+                    for r_resp, r_msg in recent_events_res.fetchall():
+                        r_resp_clean = (r_resp or "").strip()
+                        r_msg_clean = (r_msg or "").strip()
+                        valid_resp = r_resp_clean if not r_resp_clean.startswith("Modo Silencioso") else ""
+                        if (
+                            (valid_resp and (msg_out_text == valid_resp or msg_out_text in valid_resp or valid_resp in msg_out_text)) or
+                            (r_msg_clean and (msg_out_text == r_msg_clean or msg_out_text in r_msg_clean or r_msg_clean in msg_out_text))
+                        ):
+                            already_exists = True
+                            logger.info(f"⏭️ Mensagem de saída de eco descartada por duplicidade com evento recente de follow-up/agente para {phone}")
+                            break
 
                 if not already_exists:
                     now_br = get_now_br()
@@ -619,7 +653,8 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
     if not phone: 
         raise HTTPException(status_code=400, detail="Telefone não encontrado. O JSON deve conter 'phone', 'telefone' ou 'sender.phone'")
 
-    mensagem_text = get_value_by_path(body, "template_content") or get_value_by_path(body, "content") or ""
+    media_info = extract_and_compose_media_memory(body)
+    mensagem_text = media_info["composed_message"]
     dono_raw = (
         get_value_by_path(body, "Dono") or 
         get_value_by_path(body, "dono") or 
@@ -647,7 +682,9 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
         )
         recent_evts = recent_agent_evt.scalars().all()
         for revt in recent_evts:
-            if revt.agent_response and mensagem_text and (mensagem_text.strip() in revt.agent_response or revt.agent_response.strip() in mensagem_text):
+            if revt.agent_response and not revt.agent_response.startswith("Modo Silencioso") and mensagem_text and (
+                mensagem_text.strip() in revt.agent_response or revt.agent_response.strip() in mensagem_text
+            ):
                 dono = "agente"
                 break
 
@@ -667,19 +704,24 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
     memory_contato_nome = str(name_raw).strip() if name_raw and str(name_raw).strip() and str(name_raw).strip().lower() not in ("none", "null", "contato desconhecido") and not str(name_raw).strip().startswith("Lead_") else None
 
     await ensure_leads_table(config.leads_table)
-    await upsert_lead(config.leads_table, {
+    lead_id = await upsert_lead(config.leads_table, {
         "telefone": phone, 
         "contato_nome": memory_contato_nome, 
         "dono": dono,
         "mensagem": mensagem_text,
+        "link": media_info["media_url"] or None,
         "is_memory": True,
         "event_type": "memory"
     }, config.id)
+
+    if media_info.get("has_document_content"):
+        await save_media_memory_to_user_memory(db, phone, lead_id, media_info)
     
     preview_msg = (mensagem_text[:50] + "...") if len(mensagem_text) > 50 else mensagem_text
     logger.info(
         f"💾 [MEMÓRIA RECEBIDA] Mensagem registrada no lead ({phone}) | "
-        f"Autor: {dono} | Nome: {memory_contato_nome or 'Desconhecido'} | Texto: '{preview_msg}'"
+        f"Autor: {dono} | Nome: {memory_contato_nome or 'Desconhecido'} | "
+        f"Mídia Anexada: {media_info.get('filename') or 'Não'} | Texto: '{preview_msg}'"
     )
 
     now_br = get_now_br()
@@ -688,25 +730,64 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
     # Detecta se é disparo de template
     is_template = bool(
         get_value_by_path(body, "template_content") or 
+        get_value_by_path(body, "template_name") or 
         get_value_by_path(body, "is_template") or 
         str(get_value_by_path(body, "message_type") or "").lower() == "template"
     )
     detected_msg_type = "template" if is_template else (get_value_by_path(body, "message_type") or "text")
 
     # Se for mensagem enviada pelo agente/empresa, status nasce completed para evitar loop de auto-resposta
-    event_status = "completed" if is_agent_message else "waiting"
+    event_status = "completed" if (is_agent_message or (media_info.get("has_document_content") and not body.get("facts"))) else "waiting"
     agent_resp = (
         "Modo Silencioso (Disparo de Template)" if is_template else "Modo Silencioso (Mensagem de Saída)"
     ) if is_agent_message else None
 
     detail_step = (
-        "Disparo de template registrado com sucesso no histórico do contato." if is_template else
+        (
+            f"Disparo de template com conteúdo de mídia anexado ({media_info['filename'] or 'Documento'}) registrado com sucesso na memória do contato."
+            if media_info.get("has_document_content")
+            else "Disparo de template registrado com sucesso no histórico do contato."
+        ) if is_template else
         "Mensagem de saída registrada com sucesso no histórico do contato."
     ) if is_agent_message else "Os dados foram recebidos e estão aguardando o processamento da fila de vetorização."
 
     step_title = "💾 Disparo de Template Registrado" if is_template else (
         "💾 Mensagem de Saída Registrada" if is_agent_message else "📥 Recebido Webhook de Memória"
     )
+
+    if is_agent_message:
+        cutoff_dt = get_now_utc() - timedelta(seconds=60)
+        recent_evts_res = await db.execute(
+            select(WebhookEventModel.id, WebhookEventModel.agent_response, WebhookEventModel.mensagem).where(
+                WebhookEventModel.webhook_config_id == config.id,
+                WebhookEventModel.telefone == phone,
+                WebhookEventModel.created_at >= cutoff_dt
+            ).order_by(WebhookEventModel.created_at.desc()).limit(10)
+        )
+        for r_id, r_resp, r_msg in recent_evts_res.fetchall():
+            r_resp_clean = (r_resp or "").strip()
+            r_msg_clean = (r_msg or "").strip()
+            valid_resp = r_resp_clean if not r_resp_clean.startswith("Modo Silencioso") else ""
+            if mensagem_text and (
+                (valid_resp and (mensagem_text.strip() == valid_resp or mensagem_text.strip() in valid_resp or valid_resp in mensagem_text.strip())) or
+                (r_msg_clean and (mensagem_text.strip() == r_msg_clean or mensagem_text.strip() in r_msg_clean or r_msg_clean in mensagem_text.strip()))
+            ):
+                doc_str = media_info.get("document_content") or ""
+                if doc_str and doc_str not in valid_resp and doc_str not in r_msg_clean:
+                    existing_evt = await db.get(WebhookEventModel, r_id)
+                    if existing_evt:
+                        if existing_evt.agent_response and not existing_evt.agent_response.startswith("Modo Silencioso"):
+                            existing_evt.agent_response = mensagem_text
+                        if existing_evt.mensagem or existing_evt.event_type == "memory":
+                            existing_evt.mensagem = mensagem_text
+                        if media_info.get("media_url") and not existing_evt.link:
+                            existing_evt.link = media_info["media_url"]
+                        await db.commit()
+                        logger.info(f"✨ Evento recente {r_id} enriquecido com conteúdo de mídia anexada ({media_info.get('filename')}) para {phone}")
+                        return {"ok": True, "phone": phone, "event_id": r_id, "status": "agent_memory_saved_to_history"}
+
+                logger.info(f"⏭️ Webhook de memória do agente ignorado por duplicidade com evento recente {r_id} para {phone}")
+                return {"ok": True, "phone": phone, "event_id": r_id, "status": "duplicate_agent_memory_ignored"}
 
     event = WebhookEventModel(
         webhook_config_id=config.id,
@@ -718,12 +799,19 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
         contato_nome=memory_contato_nome or ("Lead_" + phone[-4:]),
         dono=dono,
         mensagem=mensagem_text,
+        link=media_info["media_url"] or None,
         agent_response=agent_resp,
         created_at=now_br,
         processing_steps=json.dumps([{
             "step": step_title,
             "detail": detail_step,
-            "timestamp": now_br.isoformat()
+            "timestamp": now_br.isoformat(),
+            "metadata": {
+                "has_document_content": media_info.get("has_document_content", False),
+                "filename": media_info.get("filename") or None,
+                "media_url": media_info.get("media_url") or None,
+                "template_name": media_info.get("template_name") or None
+            }
         }], ensure_ascii=False)
     )
     db.add(event)
@@ -739,5 +827,6 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
             sync_memory_to_vector.delay(event.id)
         return {"ok": True, "phone": phone, "event_id": event.id, "status": "agent_memory_saved_to_history"}
 
-    sync_memory_to_vector.delay(event.id)
+    if body.get("facts") or not media_info.get("has_document_content"):
+        sync_memory_to_vector.delay(event.id)
     return {"ok": True, "phone": phone, "event_id": event.id}

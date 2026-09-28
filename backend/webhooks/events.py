@@ -40,6 +40,8 @@ async def list_webhook_events(
     if status and status != 'all':
         where_clauses.append("status = :status")
         params["status"] = status
+    else:
+        where_clauses.append("status != 'skipped'")
     
     if dono:
         where_clauses.append("dono = :dono")
@@ -115,16 +117,31 @@ async def list_webhook_events(
     items = [dict(zip(columns, row)) for row in res.fetchall()]
 
     agent_responses_in_batch = {item['agent_response'].strip() for item in items if item.get('agent_response')}
+    followup_msgs_in_batch = {
+        item['agent_response'].strip()
+        for item in items
+        if item.get('event_type') == 'followup' and item.get('agent_response')
+    }
+
     filtered_items = []
     for item in items:
         msg = (item.get('mensagem') or '').strip()
+        resp = (item.get('agent_response') or '').strip()
+        ev_type = item.get('event_type')
+
+        # Se for um eco (memória ou outgoing) e houver um evento de follow-up correspondente no lote, descartar o eco
+        if ev_type in ('memory', 'message') and (item.get('dono') in ('agente', 'bot') or ev_type == 'memory'):
+            check_txt = resp if resp and not resp.startswith("Modo Silencioso") else msg
+            if check_txt and any(check_txt == f_text or check_txt in f_text or f_text in check_txt for f_text in followup_msgs_in_batch if f_text):
+                continue
+
         if item.get('event_type') == 'memory' and item.get('dono') not in ('agente', 'bot'):
-            if msg and any(msg in resp or resp in msg for resp in agent_responses_in_batch if resp):
+            if msg and any(msg in resp_item or resp_item in msg for resp_item in agent_responses_in_batch if resp_item):
                 item['dono'] = 'agente'
         
         is_agent_item = item.get('dono') in ('agente', 'bot') or item.get('event_type') == 'memory'
         if is_agent_item and not item.get('agent_response') and msg:
-            if any(msg in resp or resp in msg for resp in agent_responses_in_batch if resp):
+            if any(msg in resp_item or resp_item in msg for resp_item in agent_responses_in_batch if resp_item):
                 continue
 
         # Enriquecer com informações de custo e se foi pelo cache semântico (de graça), zapvoice ou pago (IA)
@@ -217,12 +234,12 @@ async def get_lead_history(webhook_id: int, phone: str, page: int = 1, page_size
             (CASE WHEN agent_response IS NOT NULL AND agent_response != '' THEN 1 ELSE 0 END)
         ), 0)
         FROM webhook_events 
-        WHERE webhook_config_id = :wid AND telefone = :tel
+        WHERE webhook_config_id = :wid AND telefone = :tel AND status != 'skipped'
     """)
     total_res = await db.execute(total_query, {"wid": webhook_id, "tel": phone})
     total_messages = total_res.scalar() or 0
 
-    query = text("SELECT id, contato_id, telefone, mensagem, dono, created_at, agent_response FROM webhook_events WHERE webhook_config_id = :wid AND telefone = :tel ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
+    query = text("SELECT id, contato_id, telefone, mensagem, dono, created_at, agent_response FROM webhook_events WHERE webhook_config_id = :wid AND telefone = :tel AND status != 'skipped' ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
     res = await db.execute(query, {"wid": webhook_id, "tel": phone, "limit": page_size, "offset": offset})
     rows = res.fetchall()
     

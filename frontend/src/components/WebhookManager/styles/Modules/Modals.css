@@ -53,6 +53,15 @@ body.global-modal-open .main-content {
   max-width: 450px !important;
 }
 
+.premium-modal-content.compact-text-modal,
+.premium-modal-content.auto-height {
+  height: auto !important;
+  min-height: unset !important;
+  max-height: 85vh !important;
+  max-width: 620px !important;
+  width: 90% !important;
+}
+
 .premium-modal-content.modal-wide {
   max-width: 1120px !important;
   width: 95% !important;

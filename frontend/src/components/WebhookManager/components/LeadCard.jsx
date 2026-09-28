@@ -45,7 +45,26 @@ const LeadCard = ({
                 onClick={() => onToggleExpand(l.id)}
                 style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer', alignItems: 'center' }}
             >
-                <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    {/* Seleção Individual à Esquerda */}
+                    <div
+                        onClick={(e) => { e.stopPropagation(); onToggleSelect(l.id); }}
+                        title={isSelected ? "Desmarcar contato" : "Selecionar contato"}
+                        data-testid={`lead-select-checkbox-${l.id}`}
+                        style={{
+                            width: '24px', height: '24px', borderRadius: '7px',
+                            border: `2px solid ${isSelected ? '#6366f1' : 'rgba(255,255,255,0.3)'}`,
+                            background: isSelected ? '#6366f1' : 'rgba(255,255,255,0.05)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            boxShadow: isSelected ? '0 0 12px rgba(99, 102, 241, 0.5)' : 'none',
+                            flexShrink: 0,
+                            transition: 'all 0.2s ease',
+                            userSelect: 'none'
+                        }}
+                    >
+                        {isSelected && <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 800 }}>✓</span>}
+                    </div>
+
                     <div style={{
                         width: '46px', height: '46px', borderRadius: '14px',
                         background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
@@ -123,13 +142,13 @@ const LeadCard = ({
                         </div>
                     </div>
                 </div>
-                <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                     {!isExpanded && (
                         <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', fontStyle: 'italic' }}>
                             Última: {l.mensagem || '—'}
                         </div>
                     )}
-                    <div style={{ display: 'flex', gap: '0.6rem' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                         <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onViewFollowupPipeline && onViewFollowupPipeline(l); }}
@@ -157,19 +176,6 @@ const LeadCard = ({
                             className="btn-action-delete"
                             style={{ borderRadius: '10px', padding: '0.5rem 0.8rem', fontSize: '0.8rem' }}
                         ><span>🗑️</span></button>
-                    </div>
-                    {/* Seleção Individual */}
-                    <div
-                        onClick={(e) => { e.stopPropagation(); onToggleSelect(l.id); }}
-                        style={{
-                            width: '22px', height: '22px', borderRadius: '7px', border: '2px solid rgba(255,255,255,0.1)',
-                            background: isSelected ? '#6366f1' : 'rgba(255,255,255,0.03)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                            boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.4)' : 'none',
-                            flexShrink: 0
-                        }}
-                    >
-                        {isSelected && <span style={{ color: '#fff', fontSize: '0.8rem' }}>✓</span>}
                     </div>
                 </div>
             </div>

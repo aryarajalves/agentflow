@@ -583,6 +583,29 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 
 ---
 
+### Novidades e Ajustes Recentes (v1.2.8) - Criado por Aryaraj
+- **Modal de Visualização Completa Compacto e Adaptativo**:
+  - Ajuste no modal de visualização de texto ampliado (`MaximizedTextModal`) para ter altura adaptativa ao conteúdo (`height: auto`), eliminando espaços vazios para textos curtos e expandindo suavemente até `60vh` (com rolagem estilizada `custom-scrollbar`) para respostas longas do agente.
+- **Caixa de Seleção de Contatos Alinhada à Esquerda**:
+  - Reposicionamento da caixa de seleção individual de cada lead para a esquerda, imediatamente antes do avatar do contato, criando alinhamento visual perfeito com o checkbox *"Selecionar Todos"* do cabeçalho.
+  - Aumento das dimensões do checkbox para 24x24px com bordas de alto contraste, área de clique aprimorada e margem confortável para os botões de ação e exclusão no lado direito.
+
+---
+
+### Novidades e Ajustes Recentes (v1.2.7) - Criado por Aryaraj
+- **Memória de Conteúdo de Mídia/Documento em Disparos de Template (`document_content`)**:
+  - Quando o webhook de memória (`/webhooks/memory/{token}`) ou de recepção (`/webhooks/receive/{token}`) recebe um disparo de template contendo mídia anexada (`document_content`, `filename`, `media_url`), o sistema incorpora o texto integral extraído do documento ao registro do evento (`📄 [Conteúdo da Mídia/Documento Enviado (filename)]`), salva o conteúdo na memória estruturada de longo prazo do contato (`UserMemoryModel`) e o injeta automaticamente no histórico conversacional (`retrieve_context_history`) para que o agente de IA conheça todo o conteúdo do PDF/mídia enviado ao lead.
+  - Caso um eco de saída tenha sido registrado segundos antes apenas com o `template_content`, a chegada subsequente do webhook com `document_content` enriquece automaticamente o evento existente sem duplicar registros.
+- **Resolução de Texto Real em Disparos de Templates Oficiais do Follow-Up**:
+  - Quando um passo de follow-up do tipo WhatsApp Template é disparado, o sistema agora resolve dinamicamente as variáveis do template (`{{1}}`, `{nome}`, `{primeiro_nome}`, `{telefone}`) com os dados do lead e exibe o texto amigável completo na coluna *Resposta IA* do histórico, eliminando a exibição crua de identificadores técnicos (`[Template Oficial]: pix_gerado`).
+- **Eliminação de Triplicação e Deduplicação Inteligente de Ecos do ZapVoice**:
+  - Implementação de filtro de deduplicação temporal (janela de 60 segundos) para mensagens de saída (`is_out`) e memórias de agentes recebidas do ZapVoice logo após um disparo de follow-up.
+  - Garante que cada disparo de follow-up seja registrado exatamente uma única vez na tabela de histórico de conversas do contato.
+- **Identificação Padronizada de Origem (`FOLLOW-UP`)**:
+  - Disparos automáticos e manuais de follow-up agora recebem a tag e o badge visual dedicados `FOLLOW-UP`, facilitando a auditoria operacional e distinguindo claramente mensagens da régua contra respostas avulsas do robô ou do usuário.
+- **Histórico Limpo em Passos Pulados Manualmente**:
+  - Quando um passo de follow-up é pulado através da ação manual *⏭️ Pular Passo*, ele não é inserido no histórico de conversas do contato, mantendo o histórico 100% limpo e livre de falsos positivos de disparo.
+
 ### Novidades e Ajustes Recentes (v1.2.6) - Criado por Aryaraj
 - **Continuidade Inteligente e Reinício de Temporizador no Follow-Up**:
   - Quando um contato envia uma mensagem enquanto está em um funil de follow-up ativo, o pipeline não é mais cancelado nem pausado indevidamente. O temporizador do passo atual é reiniciado mantendo o lead na mesma etapa.
@@ -593,6 +616,11 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
   - Modal do Pipeline de Follow-Up enriquecido com detalhes de quando o temporizador começou a contar (`started_at`), estimativa exata do próximo disparo (`estimated_dispatch_at`) e badge visual informativo caso o temporizador tenha sido reiniciado por resposta do cliente (`reset_by_lead_message`).
 - **Cálculo de Atraso em Tempo Real com Proteção de Horário Comercial**:
   - Ajuste do cálculo de contagem regressiva para respeitar tempos reais corridos (ex: 24h = dia seguinte no mesmo horário, e não 2 dias úteis acumulados), mantendo a proteção para que disparos só aconteçam dentro da janela de horário comercial configurada.
+- **Ações Manuais no Passo Ativo de Follow-Up (Disparar Agora & Pular Passo)**:
+  - Adição de dois botões de controle operacional rápido no card do passo que está atualmente ativo na Linha do Tempo:
+    1. **🚀 Disparar Agora**: Força o envio imediato da mensagem configurada (IA, fixa ou template oficial WhatsApp) para o contato sem aguardar o temporizador, avançando o contato para a próxima etapa (`followup_step + 1`) e registrando o log do evento.
+    2. **⏭️ Pular Passo**: Avança o contato para a etapa seguinte da régua sem disparar a mensagem atual, recalculando a contagem de tempo a partir do momento do pulo.
+  - **Popups de Confirmação Seguros (Glassmorphism)**: Em ambos os casos, a interface exibe um popup modal centralizado na tela com backdrop escuro e blur, que não fecha por clique fora e conta com exatamente 1 botão de cancelamento e 1 botão de confirmação com spinner de carregamento e feedback instantâneo por toast.
 - **Atualização de Segurança de Dependências**:
   - Correção de vulnerabilidade crítica no pacote `anyio` (atualizado para v4.15.1) e alinhamento do `typing_extensions` (v4.16.0), passando com 100% de conformidade nas auditorias de segurança do backend e frontend.
 
@@ -603,12 +631,12 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 *(Aviso: Conforme as regras do projeto, nunca gerar ou dar push em tags `latest` no Docker Hub; use sempre tags de versão estritas.)*
 
 ### Backend
-1. **Build:** `docker build -t aryalvesfernandes/configuraagente:backend-1.2.6 ./backend`
-2. **Push:** `docker push aryalvesfernandes/configuraagente:backend-1.2.6`
+1. **Build:** `docker build -t aryalvesfernandes/configuraagente:backend-1.2.7 ./backend`
+2. **Push:** `docker push aryalvesfernandes/configuraagente:backend-1.2.7`
 
 ### Frontend
-1. **Build:** `docker build --target production -t aryalvesfernandes/configuraagente:frontend-1.2.6 ./frontend`
-2. **Push:** `docker push aryalvesfernandes/configuraagente:frontend-1.2.6`
+1. **Build:** `docker build --target production -t aryalvesfernandes/configuraagente:frontend-1.2.7 ./frontend`
+2. **Push:** `docker push aryalvesfernandes/configuraagente:frontend-1.2.7`
 
 
 
