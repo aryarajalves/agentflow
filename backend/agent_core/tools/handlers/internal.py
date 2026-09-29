@@ -35,9 +35,9 @@ async def handle_unanswered_question(db, context_variables, func_args_str, histo
         # Prioriza o telefone real do contato se estiver disponível nas variáveis de contexto
         session_id = context_variables.get("contact_phone") or original_session_id or "Desconhecida"
         
-        # Identificar a origem (se tem webhook_config_id, account_id ou conversation_id, veio do chatwoot/integração)
-        is_chatwoot = any(k in context_variables for k in ["webhook_config_id", "account_id", "conversation_id"])
-        source_val = "chatwoot" if is_chatwoot else "chat"
+        # Identificar a origem (se tem webhook_config_id, account_id ou conversation_id, veio de integração zapjords/chatwoot)
+        is_integration = any(k in context_variables for k in ["webhook_config_id", "account_id", "conversation_id", "zapvoice_url", "zapjords"])
+        source_val = "zapvoice" if is_integration else "chat"
         
         # Preservar o session_id original no contexto para rastreabilidade
         meta_line = f"SESSION_ID_ORIGINAL: {original_session_id}\n" if original_session_id and original_session_id != session_id else ""
@@ -54,6 +54,24 @@ async def handle_unanswered_question(db, context_variables, func_args_str, histo
         if db:
             db.add(new_q)
             await db.commit()
+            await db.refresh(new_q)
+
+            # Notifica o painel/inbox em tempo real via WebSocket
+            try:
+                from core.websocket import manager as ws_manager
+                await ws_manager.broadcast({
+                    "type": "unanswered_question_created",
+                    "action": "create",
+                    "question_id": new_q.id,
+                    "agent_id": new_q.agent_id,
+                    "question": new_q.question,
+                    "session_id": new_q.session_id,
+                    "status": new_q.status,
+                    "source": new_q.source,
+                    "created_at": new_q.created_at.isoformat() if getattr(new_q, "created_at", None) else None
+                })
+            except Exception as ws_err:
+                logger.warning(f"Erro ao emitir broadcast de nova dúvida no inbox: {ws_err}")
 
             # Consultar configurações do agente (limite de dúvidas sem resposta e prompt customizado)
             handoff_limit = 2
@@ -89,14 +107,21 @@ async def handle_unanswered_question(db, context_variables, func_args_str, histo
                 return (
                     f"ATENÇÃO: O limite de {handoff_limit} dúvida(s) sem resposta foi atingido nesta conversa. "
                     "O atendimento foi AUTOMATICAMENTE TRANSFERIDO PARA O SUPORTE HUMANO. "
-                    "INSTRUÇÃO OBRIGATÓRIA DE RESPOSTA: Se o usuário fez mais de uma pergunta e você já possui a resposta para alguma das outras perguntas no contexto RAG/Prompt, VOCÊ DEVE OBRIGATORIAMENTE INCLUIR ESSA RESPOSTA no texto final. Ao final da mensagem, informe de forma educada que a dúvida ausente (ou o atendimento) foi direcionada para um especialista humano."
+                    "INSTRUÇÃO OBRIGATÓRIA DE RESPOSTA: Responda APENAS sobre a pergunta feita nesta mensagem atual. "
+                    "É TERMINANTEMENTE PROIBIDO re-responder perguntas que o usuário fez em turnos anteriores do histórico "
+                    "ou ficar recapitulando/mencionando dúvidas passadas já tratadas. "
+                    "Se e somente se o usuário fez mais de uma pergunta DENTRO DESTA MESMA MENSAGEM ATUAL e você já possui a resposta para alguma das outras perguntas no contexto RAG/Prompt, inclua essa resposta no texto final. "
+                    "Ao final da mensagem, informe de forma educada que a dúvida ausente (ou o atendimento) foi direcionada para um especialista humano."
                 )
 
             if custom_resp_prompt and custom_resp_prompt.strip():
                 return (
                     f"Dúvida registrada com sucesso para a equipe. "
                     f"DIRETRIZ OBRIGATÓRIA DE RESPOSTA AO CLIENTE: {custom_resp_prompt.strip()} "
-                    f"Se o usuário fez mais de uma pergunta e você souber responder alguma das outras pelo contexto/RAG, responda-a normalmente."
+                    "ATENÇÃO CRÍTICA DE ESCOPO: Responda APENAS sobre a pergunta feita nesta mensagem atual. "
+                    "É TERMINANTEMENTE PROIBIDO re-responder perguntas que o usuário fez em turnos anteriores do histórico (ex: quem é o professor, dados ou apresentações já respondidas) "
+                    "e é ESTRITAMENTE PROIBIDO citar ou recapitular dúvidas passadas (ex: 'também já encaminhei sua dúvida anterior'). "
+                    "Se e somente se o usuário fez mais de uma pergunta na MESMA mensagem atual e você souber responder alguma das outras pelo contexto/RAG, responda-a normalmente."
                 )
 
             return "Dúvida registrada para nossa equipe."

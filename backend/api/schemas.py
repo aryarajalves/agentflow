@@ -600,3 +600,49 @@ class SourceAttributionResponse(BaseModel):
     cost_usd: Optional[float] = 0.0
     cost_brl: Optional[float] = 0.0
 
+
+# --- SCHEMAS COFRE DE PROMPTS (PROMPT VAULT) ---
+class PromptVaultCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    source_agent_id: Optional[int] = None
+    backup_type: Optional[str] = "manual"
+    system_prompt: Optional[str] = ""
+    dynamic_prompt: Optional[str] = ""
+    pre_router_prompt: Optional[str] = None
+    unanswered_question_prompt: Optional[str] = None
+    tool_prompts: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
+
+class PromptVaultUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class PromptVaultResponse(BaseModel):
+    id: int
+    client_id: Optional[int] = None
+    name: str
+    description: Optional[str] = None
+    source_agent_id: Optional[int] = None
+    source_agent_name: Optional[str] = None
+    backup_type: str
+    system_prompt: str
+    dynamic_prompt: Optional[str] = None
+    pre_router_prompt: Optional[str] = None
+    unanswered_question_prompt: Optional[str] = None
+    tool_prompts: Optional[Dict[str, Any]] = None
+    extra_metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class PromptVaultRestoreRequest(BaseModel):
+    target_agent_id: Optional[int] = None
+    restore_system_prompt: bool = True
+    restore_pre_router: bool = True
+    restore_dynamic: bool = True
+    restore_unanswered: bool = True
+    restore_tool_prompts: bool = True
+
+

@@ -21,6 +21,7 @@ import LeadScoring from './components/LeadScoring/index';
 import CRM from './components/CRM/index';
 import ObjectionsDashboard from './components/ObjectionsDashboard';
 import Backups from './components/Backups';
+import PromptVault from './components/PromptVault';
 
 
 function App() {
@@ -91,6 +92,7 @@ function App() {
                         <Route path="/webhooks" element={<WebhookManager />} />
                         <Route path="/crm" element={<CRM />} />
                         <Route path="/lead-scoring" element={<LeadScoring />} />
+                        <Route path="/prompt-vault" element={<PromptVault />} />
                       </>
                     )}
 

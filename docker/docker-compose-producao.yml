@@ -53,6 +53,7 @@ services:
       - S3_REGION=${S3_REGION}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH:-5368709120}
+      - TZ=America/Sao_Paulo
 
     deploy:
       mode: replicated
@@ -117,6 +118,7 @@ services:
       - S3_REGION=${S3_REGION}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - PYTHONPATH=/app
+      - TZ=America/Sao_Paulo
     deploy:
       mode: replicated
       replicas: 1
@@ -144,6 +146,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - PYTHONPATH=/app
+      - TZ=America/Sao_Paulo
     deploy:
       mode: replicated
       replicas: 1

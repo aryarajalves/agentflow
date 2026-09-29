@@ -1,0 +1,122 @@
+/* Estilos do Painel de Filtros do Inbox de Dúvidas */
+.uq-filters-panel {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+    transition: all 0.3s ease;
+}
+
+.uq-filters-panel:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.1);
+}
+
+.uq-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.uq-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex: 1 1 180px;
+    min-width: 160px;
+}
+
+.uq-filter-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.uq-filter-input,
+.uq-filter-select {
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f1f5f9;
+    padding: 0.6rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.uq-filter-input:focus,
+.uq-filter-select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    background: rgba(30, 41, 59, 1);
+}
+
+.uq-filter-input::placeholder {
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.uq-filter-date {
+    color-scheme: dark;
+}
+
+.uq-filter-group-actions {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.btn-clear-filters {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-clear-filters:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.btn-clear-filters:active {
+    transform: scale(0.97);
+}
+
+@media (max-width: 768px) {
+    .uq-filters-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .uq-filter-group {
+        width: 100%;
+        min-width: 100%;
+    }
+    .btn-clear-filters {
+        width: 100%;
+        justify-content: center;
+    }
+}

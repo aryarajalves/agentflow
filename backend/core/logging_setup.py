@@ -18,12 +18,24 @@ uniformiza o formato de log do projeto inteiro.
 """
 import os
 import logging
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
+from core.timezone import get_brasilia_tz
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] [%(name)s]: %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 _configured = False
+
+
+class BrasiliaFormatter(logging.Formatter):
+    """Formatter que garante que o timestamp do log %(asctime)s seja emitido no fuso de Brasília."""
+
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.fromtimestamp(record.created, tz=timezone.utc).astimezone(get_brasilia_tz())
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime(DATE_FORMAT)
 
 
 def configure_logging(component_name: str = "backend"):
@@ -33,7 +45,7 @@ def configure_logging(component_name: str = "backend"):
     _configured = True
 
     log_dir = os.getenv("LOG_FILE_DIR", "/app/logs")
-    formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+    formatter = BrasiliaFormatter(LOG_FORMAT, datefmt=DATE_FORMAT)
 
     root = logging.getLogger()
     root.setLevel(logging.INFO)

@@ -1,0 +1,348 @@
+/* PromptFieldEditor.css - Estilo do editor de prompts com gutter e popup maximizado */
+
+.prompt-field-editor-container {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.prompt-field-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.prompt-editor-header-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.prompt-stat-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: rgba(30, 41, 59, 0.75);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 500;
+}
+
+.prompt-stat-badge-tokens {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.25);
+    font-weight: 600;
+}
+
+.prompt-field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin: 0;
+}
+
+.btn-maximize-field {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #38bdf8;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.btn-maximize-field:hover {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #7dd3fc;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+/* Caixa do Editor com Números de Linha */
+.prompt-editor-box {
+    display: flex;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.prompt-editor-box:focus-within {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18), inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Máscara de Proteção e Prévia Compacta */
+.prompt-editor-box.is-masked {
+    position: relative;
+    max-height: 170px !important;
+    height: 170px !important;
+    overflow: hidden;
+}
+
+.prompt-editor-box.is-masked .prompt-editor-textarea {
+    overflow-y: hidden;
+    user-select: none;
+}
+
+.prompt-editor-mask-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 38px; /* Deixa as primeiras 2-3 linhas visíveis com fade crescente */
+    background: linear-gradient(180deg, 
+        rgba(15, 23, 42, 0.05) 0%, 
+        rgba(15, 23, 42, 0.8) 35%, 
+        rgba(15, 23, 42, 0.98) 85%
+    );
+    backdrop-filter: blur(3px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 16px;
+    z-index: 10;
+    pointer-events: auto;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.btn-reveal-prompt {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(129, 140, 248, 0.25) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.5);
+    color: #38bdf8;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.15);
+    transition: all 0.2s ease;
+}
+
+.btn-reveal-prompt:hover {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.4) 0%, rgba(129, 140, 248, 0.4) 100%);
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+.prompt-mask-hint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    letter-spacing: 0.2px;
+}
+
+.btn-toggle-mask-header {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.btn-toggle-mask-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+}
+
+.btn-toggle-wrap-header {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.btn-toggle-wrap-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+}
+
+.btn-toggle-wrap-header.active {
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.12);
+}
+
+/* Gutter de Números de Linha */
+.prompt-editor-gutter {
+    background: rgba(0, 0, 0, 0.4);
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    min-width: 44px;
+    padding: 10px 8px 10px 6px;
+    text-align: right;
+    user-select: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.prompt-editor-line-number {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 20px;
+    height: 20px;
+    color: #475569;
+    font-weight: 500;
+}
+
+/* Textarea do Editor */
+.prompt-editor-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 20px;
+    color: #f1f5f9;
+    resize: vertical;
+    white-space: pre-wrap;
+    word-break: break-word;
+    tab-size: 4;
+}
+
+.prompt-editor-textarea.nowrap {
+    white-space: pre !important;
+    overflow-x: auto !important;
+    word-break: normal !important;
+}
+
+.prompt-editor-textarea::placeholder {
+    color: #475569;
+}
+
+/* Barra de Estatísticas Inferior */
+.prompt-editor-footer-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px 0 4px;
+    font-size: 11.5px;
+    color: #94a3b8;
+    flex-wrap: wrap;
+}
+
+.prompt-stat-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.prompt-stat-separator {
+    color: #475569;
+}
+
+.prompt-stat-tokens {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    padding: 2px 7px;
+    border-radius: 5px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    font-weight: 500;
+}
+
+/* POPUP GRANDE MAXIMIZADO */
+.prompt-max-overlay {
+    z-index: 1200;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(10px);
+}
+
+.prompt-max-panel {
+    width: 94vw;
+    max-width: 1280px;
+    height: 88vh;
+    max-height: 92vh;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.15);
+}
+
+.prompt-max-header h3 {
+    font-size: 18px;
+    color: #38bdf8;
+}
+
+.prompt-max-body {
+    flex: 1;
+    padding: 16px 24px;
+    display: flex;
+    overflow: hidden;
+    background: #090d16;
+}
+
+.prompt-editor-box-max {
+    flex: 1;
+    height: 100%;
+    min-height: unset !important;
+    border-radius: 12px;
+}
+
+.prompt-editor-gutter-max {
+    min-width: 50px;
+    padding-top: 14px;
+}
+
+.prompt-editor-textarea-max {
+    height: 100% !important;
+    resize: none !important;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 20px;
+}
+
+.prompt-max-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.prompt-max-footer-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.prompt-max-footer-actions {
+    display: flex;
+    gap: 10px;
+}

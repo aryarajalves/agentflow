@@ -59,6 +59,25 @@ def process_webhook_automation(self, event_id: int):
             webhook_tasks.resolve_grouped_media(db, event, config, event_id)
 
         msg_type = (event.message_type or "text").lower()
+        msg_text = (event.mensagem or "").strip().lower()
+        if (
+            "(unsupported)" in msg_text
+            or "[unsupported]" in msg_text
+            or "arquivo (unsupported)" in msg_text
+            or msg_type == "unsupported"
+        ):
+            webhook_tasks._add_step(
+                db,
+                event_id,
+                "🚫 Arquivo não suportado ignorado",
+                "A mensagem recebida é um evento/arquivo não suportado pelo WhatsApp/Chatwoot (ex: '📎 Arquivo (unsupported) recebido'). Descartando automação sem responder ao usuário."
+            )
+            event = db.query(WebhookEventModel).filter(WebhookEventModel.id == event_id).first()
+            event.status = "ignored"
+            event.is_automatic = True
+            db.commit()
+            return
+
         if msg_type in ["video", "document"]:
             webhook_tasks._add_step(db, event_id, f"🚫 Mídia não suportada ({msg_type})", "Não foi possível enviar pro agente já que é um tipo mídia que não aceita.")
             event.status = "completed"

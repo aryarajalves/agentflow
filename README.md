@@ -214,8 +214,17 @@ docker-compose -f docker/docker-compose-local.yml up -d --build frontend backend
 - **Custo R$ 0,00 de LLM & Raio-X Detalhado:**
   - O disparo do funil responde em frações de segundo com consumo zero de tokens de geração.
   - O `ChatPlayground` exibe o player de áudio interativo, balões individuais com delay e o diagnóstico visual completo via Raio-X.
-- **Testador de Gatilho em Tempo Real:**
-  - Modal interativo "🧪 Testar Gatilho" na aba de funis para simular perguntas reais de clientes e inspecionar a porcentagem de similaridade calculada contra todos os funis cadastrados.
+### 18. Sincronização em Tempo Real & Filtros do Inbox de Dúvidas (WebSocket & Query Engine)
+- **Atualização Instantânea Sem Refresh:** O Inbox de Dúvidas atualiza instantaneamente em tempo real via WebSockets (`/ws/events`). Quando o agente de IA não souber responder a uma dúvida durante um atendimento ativo com um lead ou usuário, a nova dúvida surge no painel imediatamente sem a necessidade de recarregar a página manualmente.
+- **Broadcast Multi-Worker Resiliente:** Disparado pelo backend através da publicação no canal Redis (`websocket_broadcast`), garantindo sincronização perfeita tanto em instâncias FastAPI quanto em workers assíncronos do Celery.
+- **Sincronia Bidirecional das Ações:** Ações de responder dúvida (RAG), ensinar no prompt do agente ou descarte (individual e em massa) propagam eventos em tempo real para sincronizar o status e contadores de todas as abas abertas.
+- **Indicador de Conexão Ao Vivo:** O cabeçalho do Inbox conta com um badge dinâmico (`🟢 Ao vivo` / `🟡 Conectando`) que assegura a integridade da conexão do operador com o servidor.
+- **Painel de Filtros Avançados:**
+  - **Por Agente:** Permite selecionar um agente específico no dropdown dinâmico ou visualizar dúvidas de todos os agentes.
+  - **Por Contato / Telefone:** Campo de pesquisa livre que busca pelo número de WhatsApp do lead, identificador numérico de lead nas tabelas de automação ou termos do histórico contextual.
+  - **Por Origem da Dúvida:** Filtra dúvidas geradas em testes diretos (`💻 Chat Direto`) ou originadas em atendimentos reais do WhatsApp (`💬 Integração ZapJords`).
+  - **Por Período (Data Inicial e Final):** Filtro por data de criação (`created_at`) cobrindo o dia completo em UTC/horário de Brasília.
+  - **Botão de Limpeza em 1 Clique:** Redefine todos os filtros aplicados e reinicia a paginação de forma suave.
 
 ---
 
@@ -379,6 +388,18 @@ Esta versão traz a modularização completa da arquitetura do modal de edição
   - `ZapvoiceTab.jsx`: Gerenciamento de credenciais, sincronização automática de etiquetas, transbordo/suporte humano e assistente de projeto.
 - **Backup de Segurança**: Backup integral da versão legada preservado em `codigo_obsoleto/frontend/EditWebhookModal.backup.jsx`.
 - **Suíte de Testes Automatizados**: Inclusão de testes unitários no Vitest em `frontend/src/test/components/EditWebhookModal.test.jsx` cobrindo a renderização, navegação de abas e interação com subcomponentes.
+
+---
+
+## ✨ Novidades da Versão (v1.8.9) - Correção e Blindagem de Deduplicação de Webhooks
+
+Esta versão traz a blindagem completa contra duplicação de mensagens e templates disparados por webhooks de memória e ecos do ZapVoice:
+- **Deduplicação Inteligente Cruzada (Eco ZapVoice + Webhook de Memória)**: Resolução definitiva do problema de mensagens duplicadas (com 7 segundos de diferença) no histórico do lead. Agora o backend identifica e deduplica disparos quando o ZapVoice envia o eco de saída (`/webhook/receive`) e o funil/automação envia a confirmação para o Webhook de Memória (`/webhooks/memory`).
+- **Compatibilidade de Nono Dígito e Prefixo Telefônico**: Busca inteligente por sufixo de 8 dígitos (`LIKE %suffix8`), permitindo que eventos sejam associados e deduplicados mesmo quando uma plataforma envia o telefone com o 9º dígito (`5585998259497`) e outra envia sem (`558598259497`).
+- **Normalização Flexível de Texto e Quebras de Linha**: Algoritmo `texts_match_flexible` que compara textos de templates ignorando diferenças de quebras de linha (`\r\n` vs `\n`), espaços múltiplos ou cabeçalhos de mídia anexada.
+- **Cache Local de Extração de Mídias/Documentos**: Evita timeouts e re-disparos (retries) automáticos de plataformas externas através de cache em memória para download e extração de PDFs/documentos.
+- **Consolidação Visual no Histórico de Leads**: Filtro dinâmico na API (`events.py`) e no hook do frontend (`useLeadHistoryEvents.js`) que agrupa e oculta duplicatas históricas de templates disparadas em janelas de até 3 minutos para o mesmo contato.
+- **Suíte de Testes Automatizados**: Inclusão de testes unitários no backend (`test_memory_webhook_deduplication.py`) e no frontend (`LeadHistory_TemplateDeduplication.test.jsx`) cobrindo cenários de chamadas consecutivas e cruzadas.
 
 ---
 
@@ -581,6 +602,19 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 
 - **Importação de Contatos e Mensagens do ZapVoice / ZapJords:** Permite sincronizar todas as conversas do ZapJords diretamente para a base de contatos com zero custo de LLM, com modal de confirmação prévia, filtragem estrita de badges de sistema (ocultando eventos de funis e tags do atendente) e identificação dedicada nas respostas importadas com o badge `📥 Importação do ZapVoice` no histórico do lead.
 
+### Novidades e Ajustes Recentes (v1.2.9) - Criado por Aryaraj
+- **Descarte Automático de Arquivos e Mídias Não Suportadas (`📎 Arquivo (unsupported) recebido`)**:
+  - Quando o contato envia um arquivo ou mídia não suportada que o Chatwoot/WhatsApp converte em texto técnico (`📎 Arquivo (unsupported) recebido`), o sistema trata a notificação como evento técnico de bot/sistema.
+  - A mensagem é rejeitada na entrada das rotas de webhook (`/webhooks/receive/{token}` e `/webhooks/memory/{token}`) com status `system_badge_ignored`, descartada defensivamente na automação do Celery (`event.status = 'ignored'`) e silenciada no Pre-Router via atalho determinístico (`shortcut-logic` com `eh_mensagem_automatica = True`), garantindo que a IA nunca gere respostas para essas mensagens técnicas.
+- **Deduplicação Temporal de Ecos e Webhooks de Memória**:
+  - Resolução de duplicidade entre disparos de templates oficiais e ecos de saída (`is_out`) vindos do ZapVoice e webhooks de memória (`/webhooks/memory/{token}`), enriquecendo eventos recentes com o conteúdo de documentos anexados (`document_content`) sem poluir o histórico de conversas do lead.
+- **Cofre de Prompts & Backup Automático Pré-Exclusão (`/prompt-vault`)**:
+  - Nova área completa e segura para gestão de pacotes de prompts de agentes (Prompt Principal, Pre-Router, Prompt Dinâmico, Diretrizes de Dúvidas Sem Resposta e Ferramentas).
+  - Snapshot automático pré-exclusão (`[Backup Pré-Exclusão] {Nome do Agente}`) criado silenciosamente antes de deletar qualquer agente do sistema.
+  - Máscara inteligente de visualização para prompts extensos com alternância suave sem piscar a tela e sincronização perfeita de numeração de linhas no editor maximizado.
+- **Treinamento de Dúvidas no Inbox por Variação de Pergunta Existente**:
+  - No Inbox de Dúvidas Não Respondidas, o operador agora pode vincular dúvidas diretamente como novas variações de perguntas existentes na Base de Conhecimento, com contagem de variações em tempo real, recálculo de vetores semânticos e atualização instantânea via WebSocket.
+
 ---
 
 ### Novidades e Ajustes Recentes (v1.2.8) - Criado por Aryaraj
@@ -621,6 +655,10 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
     1. **🚀 Disparar Agora**: Força o envio imediato da mensagem configurada (IA, fixa ou template oficial WhatsApp) para o contato sem aguardar o temporizador, avançando o contato para a próxima etapa (`followup_step + 1`) e registrando o log do evento.
     2. **⏭️ Pular Passo**: Avança o contato para a etapa seguinte da régua sem disparar a mensagem atual, recalculando a contagem de tempo a partir do momento do pulo.
   - **Popups de Confirmação Seguros (Glassmorphism)**: Em ambos os casos, a interface exibe um popup modal centralizado na tela com backdrop escuro e blur, que não fecha por clique fora e conta com exatamente 1 botão de cancelamento e 1 botão de confirmação com spinner de carregamento e feedback instantâneo por toast.
+- **Padronização de Fuso Horário nos Logs e Containers (Horário de Brasília - UTC-3)**:
+  - Configuração do fuso `America/Sao_Paulo` nos containers de backend, worker e beat no `docker-compose-producao.yml` e `docker-compose-local.yml`.
+  - Instalação e configuração de `tzdata` com `ENV TZ=America/Sao_Paulo` no `backend/Dockerfile` e inicialização no `backend/entrypoint.sh`.
+  - Implementação do `BrasiliaFormatter` em `backend/core/logging_setup.py` e hooks no Celery (`setup_logging`) para garantir que os timestamps de console e arquivos de log persistentes (`/app/logs/*.log`) emitam o horário oficial de Brasília.
 - **Atualização de Segurança de Dependências**:
   - Correção de vulnerabilidade crítica no pacote `anyio` (atualizado para v4.15.1) e alinhamento do `typing_extensions` (v4.16.0), passando com 100% de conformidade nas auditorias de segurança do backend e frontend.
 
@@ -631,12 +669,12 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 *(Aviso: Conforme as regras do projeto, nunca gerar ou dar push em tags `latest` no Docker Hub; use sempre tags de versão estritas.)*
 
 ### Backend
-1. **Build:** `docker build -t aryalvesfernandes/configuraagente:backend-1.2.7 ./backend`
-2. **Push:** `docker push aryalvesfernandes/configuraagente:backend-1.2.7`
+1. **Build:** `docker build -t aryalvesfernandes/configuraagente:backend-1.2.8 ./backend`
+2. **Push:** `docker push aryalvesfernandes/configuraagente:backend-1.2.8`
 
 ### Frontend
-1. **Build:** `docker build --target production -t aryalvesfernandes/configuraagente:frontend-1.2.7 ./frontend`
-2. **Push:** `docker push aryalvesfernandes/configuraagente:frontend-1.2.7`
+1. **Build:** `docker build --target production -t aryalvesfernandes/configuraagente:frontend-1.2.8 ./frontend`
+2. **Push:** `docker push aryalvesfernandes/configuraagente:frontend-1.2.8`
 
 
 

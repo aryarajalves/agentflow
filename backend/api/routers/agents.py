@@ -309,6 +309,14 @@ async def delete_agent(agent_id: int, db: AsyncSession = Depends(get_db), _: Non
     result = await db.execute(select(AgentConfigModel).where(AgentConfigModel.id == agent_id))
     agent = result.scalars().first()
     if not agent: raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # 🛡️ Snapshot de Segurança Pré-Exclusão no Cofre de Prompts
+    try:
+        from api.routers.prompt_vault import create_pre_deletion_backup
+        await create_pre_deletion_backup(agent, db)
+    except Exception as e:
+        logger.warning(f"Não foi possível criar backup pré-exclusão no cofre: {e}")
+
     await db.delete(agent)
     await db.commit()
     return {"message": "Agent deleted"}
@@ -316,6 +324,16 @@ async def delete_agent(agent_id: int, db: AsyncSession = Depends(get_db), _: Non
 @router.post("/agents/batch-delete")
 async def batch_delete_agents(request: BulkAgentDeleteRequest, db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     if not request.agent_ids: return {"message": "No agents to delete"}
+    
+    # 🛡️ Snapshot de Segurança Pré-Exclusão no Cofre de Prompts para cada agente
+    try:
+        from api.routers.prompt_vault import create_pre_deletion_backup
+        agents_res = await db.execute(select(AgentConfigModel).where(AgentConfigModel.id.in_(request.agent_ids)))
+        for agent in agents_res.scalars().all():
+            await create_pre_deletion_backup(agent, db)
+    except Exception as e:
+        logger.warning(f"Não foi possível criar backups pré-exclusão em lote no cofre: {e}")
+
     await db.execute(delete(AgentConfigModel).where(AgentConfigModel.id.in_(request.agent_ids)))
     await db.commit()
     return {"message": f"Deleted {len(request.agent_ids)} agents"}

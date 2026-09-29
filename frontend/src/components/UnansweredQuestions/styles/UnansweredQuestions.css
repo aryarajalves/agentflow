@@ -119,10 +119,10 @@
     background: #0f172a;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 24px;
-    width: 100%; max-width: 550px;
-    max-height: 90vh;
+    width: 100%; max-width: 580px;
+    max-height: 92vh;
     overflow-y: auto;
-    padding: 2.5rem;
+    padding: 1.8rem 2rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     animation: uqModalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -132,29 +132,29 @@
     to { transform: scale(1); opacity: 1; }
 }
 
-.uq-modal h3 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #fff; }
+.uq-modal h3 { font-size: 1.4rem; margin-bottom: 1rem; color: #fff; }
 
-.modal-body { display: flex; flex-direction: column; gap: 0.8rem; margin: 1.5rem 0; }
-.modal-body label { font-size: 0.8rem; color: #94a3b8; font-weight: 600; }
+.modal-body { display: flex; flex-direction: column; gap: 0.6rem; margin: 1rem 0; }
+.modal-body label { font-size: 0.8rem; color: #94a3b8; font-weight: 600; margin-top: 0.2rem; }
 
 .uq-input, .uq-textarea, .uq-select {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 0.8rem 1rem;
+    padding: 0.7rem 0.9rem;
     color: #fff; font-family: inherit;
     width: 100%;
     outline: none;
 }
 
-.uq-textarea { min-height: 120px; resize: none; }
+.uq-textarea { min-height: 100px; resize: none; }
 
 .uq-modal-footer {
-    display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;
+    display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.2rem;
 }
 
 .uq-modal-footer button {
-    padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer;
+    padding: 0.75rem 1.4rem; border-radius: 12px; font-weight: 700; cursor: pointer;
     transition: all 0.2s; border: none;
 }
 

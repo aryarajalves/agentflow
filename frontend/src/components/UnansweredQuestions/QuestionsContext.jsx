@@ -16,7 +16,15 @@ export const QuestionsProvider = ({ children }) => {
     const [limit, setLimit] = useState(20);
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [isLiveConnected, setIsLiveConnected] = useState(false);
     
+    // Filtros de Dúvidas
+    const [filterAgentId, setFilterAgentId] = useState('');
+    const [filterPhone, setFilterPhone] = useState('');
+    const [filterDateStart, setFilterDateStart] = useState('');
+    const [filterDateEnd, setFilterDateEnd] = useState('');
+    const [filterSource, setFilterSource] = useState(''); // '' | 'chat' | 'zapvoice'
+
     // Form States
     const [answerText, setAnswerText] = useState('');
     const [editingQuestionText, setEditingQuestionText] = useState('');
@@ -37,6 +45,12 @@ export const QuestionsProvider = ({ children }) => {
         limit, setLimit,
         page, setPage,
         totalCount, setTotalCount,
+        isLiveConnected, setIsLiveConnected,
+        filterAgentId, setFilterAgentId,
+        filterPhone, setFilterPhone,
+        filterDateStart, setFilterDateStart,
+        filterDateEnd, setFilterDateEnd,
+        filterSource, setFilterSource,
         answerText, setAnswerText,
         editingQuestionText, setEditingQuestionText,
         selectedKbId, setSelectedKbId,

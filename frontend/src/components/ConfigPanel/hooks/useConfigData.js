@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { api } from '../../../api/client';
 import { useConfig } from '../ConfigContext';
+import { showToast } from '../../WebhookManager/utils/helpers';
 
 export const useConfigData = () => {
     const {
@@ -266,7 +267,25 @@ export const useConfigData = () => {
                     setDateAwarenessFutureDays(7);
                     setUnansweredHandoffEnabled(true);
                     setUnansweredHandoffLimit(2);
-                    setUnansweredQuestionPrompt('');
+
+                    try {
+                        const prefillRaw = sessionStorage.getItem('prefill_agent_prompt');
+                        if (prefillRaw) {
+                            const prefill = JSON.parse(prefillRaw);
+                            if (prefill.name) setName(prefill.name);
+                            if (prefill.system_prompt !== undefined) setSystemPrompt(prefill.system_prompt);
+                            if (prefill.pre_router_prompt !== undefined) setPreRouterPrompt(prefill.pre_router_prompt);
+                            if (prefill.unanswered_question_prompt !== undefined) setUnansweredQuestionPrompt(prefill.unanswered_question_prompt);
+                            if (prefill.tool_prompts) setToolPrompts(prefill.tool_prompts);
+                            sessionStorage.removeItem('prefill_agent_prompt');
+                            showToast('✨ Agente iniciado com as instruções salvas no Cofre!');
+                        } else {
+                            setUnansweredQuestionPrompt('');
+                        }
+                    } catch (e) {
+                        console.error("Erro ao aplicar prefill do cofre:", e);
+                        setUnansweredQuestionPrompt('');
+                    }
                 }
             } catch (err) {
                 console.error("Global load error:", err);

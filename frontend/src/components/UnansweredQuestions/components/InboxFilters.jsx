@@ -3,92 +3,125 @@ import { useQuestions } from '../QuestionsContext';
 
 const InboxFilters = () => {
     const {
-        questionType, setQuestionType,
-        agentFilterId, setAgentFilterId,
-        dateFrom, setDateFrom,
-        dateTo, setDateTo,
-        agentsSummary, setPage
+        agents,
+        filterAgentId, setFilterAgentId,
+        filterPhone, setFilterPhone,
+        filterDateStart, setFilterDateStart,
+        filterDateEnd, setFilterDateEnd,
+        filterSource, setFilterSource,
+        setPage
     } = useQuestions();
 
-    const activeFiltersCount = [questionType, agentFilterId, dateFrom, dateTo].filter(Boolean).length;
-
-    const applyAndResetPage = (setter) => (e) => {
-        setter(e.target.value);
-        setPage(1);
-    };
-
     const handleClearFilters = () => {
-        setQuestionType('');
-        setAgentFilterId('');
-        setDateFrom('');
-        setDateTo('');
+        setFilterAgentId('');
+        setFilterPhone('');
+        setFilterDateStart('');
+        setFilterDateEnd('');
+        setFilterSource('');
         setPage(1);
     };
+
+    const hasActiveFilters = Boolean(
+        filterAgentId || filterPhone || filterDateStart || filterDateEnd || filterSource
+    );
 
     return (
-        <div className="uq-filters-bar">
-            <div className="uq-filters-label">
-                <span className="uq-filters-icon">🔎</span>
-                <span>Filtros</span>
-                {activeFiltersCount > 0 && (
-                    <span className="uq-filters-count-badge">{activeFiltersCount}</span>
+        <div className="uq-filters-panel">
+            <div className="uq-filters-row">
+                {/* 1. Filtro por Agente */}
+                <div className="uq-filter-group">
+                    <label className="uq-filter-label">🤖 Agente:</label>
+                    <select
+                        value={filterAgentId}
+                        onChange={e => {
+                            setFilterAgentId(e.target.value);
+                            setPage(1);
+                        }}
+                        className="uq-filter-select"
+                    >
+                        <option value="">Todos os Agentes</option>
+                        {agents.map(ag => (
+                            <option key={ag.id} value={ag.id}>
+                                {ag.name || `Agente #${ag.id}`}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* 2. Filtro por Telefone / Contato */}
+                <div className="uq-filter-group">
+                    <label className="uq-filter-label">📞 Contato / Telefone:</label>
+                    <input
+                        type="text"
+                        placeholder="Ex: 5511999999999"
+                        value={filterPhone}
+                        onChange={e => {
+                            setFilterPhone(e.target.value);
+                            setPage(1);
+                        }}
+                        className="uq-filter-input"
+                    />
+                </div>
+
+                {/* 3. Filtro por Origem (Chat vs ZapJords) */}
+                <div className="uq-filter-group">
+                    <label className="uq-filter-label">💬 Origem:</label>
+                    <select
+                        value={filterSource}
+                        onChange={e => {
+                            setFilterSource(e.target.value);
+                            setPage(1);
+                        }}
+                        className="uq-filter-select"
+                    >
+                        <option value="">Todas as Origens</option>
+                        <option value="chat">💻 Chat Direto</option>
+                        <option value="zapvoice">💬 Integração ZapJords</option>
+                    </select>
+                </div>
+
+                {/* 4. Filtro por Data Inicial */}
+                <div className="uq-filter-group">
+                    <label className="uq-filter-label">📅 Data Inicial:</label>
+                    <input
+                        type="date"
+                        value={filterDateStart}
+                        onChange={e => {
+                            setFilterDateStart(e.target.value);
+                            setPage(1);
+                        }}
+                        className="uq-filter-input uq-filter-date"
+                    />
+                </div>
+
+                {/* 5. Filtro por Data Final */}
+                <div className="uq-filter-group">
+                    <label className="uq-filter-label">📅 Data Final:</label>
+                    <input
+                        type="date"
+                        value={filterDateEnd}
+                        onChange={e => {
+                            setFilterDateEnd(e.target.value);
+                            setPage(1);
+                        }}
+                        className="uq-filter-input uq-filter-date"
+                    />
+                </div>
+
+                {/* Botão de Limpar Filtros */}
+                {hasActiveFilters && (
+                    <div className="uq-filter-group-actions">
+                        <button
+                            type="button"
+                            onClick={handleClearFilters}
+                            className="btn-clear-filters"
+                            title="Limpar todos os filtros aplicados"
+                        >
+                            🧹 Limpar Filtros
+                        </button>
+                    </div>
                 )}
             </div>
-
-            <div className="uq-filter-group">
-                <label className="uq-filter-label">Tipo</label>
-                <select
-                    value={questionType}
-                    onChange={applyAndResetPage(setQuestionType)}
-                    className="uq-filter-select"
-                >
-                    <option value="">Todos os tipos</option>
-                    <option value="DUVIDA_USUARIO">❓ Dúvida do Usuário</option>
-                    <option value="ERRO_FERRAMENTA">⚠️ Erro de Ferramenta</option>
-                </select>
-            </div>
-
-            <div className="uq-filter-group">
-                <label className="uq-filter-label">Agente</label>
-                <select
-                    value={agentFilterId}
-                    onChange={applyAndResetPage(setAgentFilterId)}
-                    className="uq-filter-select"
-                >
-                    <option value="">Todos os agentes</option>
-                    {agentsSummary.map(a => (
-                        <option key={a.agent_id ?? 'none'} value={a.agent_id ?? ''}>
-                            🤖 {a.agent_name} ({a.count})
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="uq-filter-group">
-                <label className="uq-filter-label">De</label>
-                <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={applyAndResetPage(setDateFrom)}
-                    className="uq-filter-date"
-                />
-            </div>
-
-            <div className="uq-filter-group">
-                <label className="uq-filter-label">Até</label>
-                <input
-                    type="date"
-                    value={dateTo}
-                    onChange={applyAndResetPage(setDateTo)}
-                    className="uq-filter-date"
-                />
-            </div>
-
-            {activeFiltersCount > 0 && (
-                <button className="btn-clear-filters" onClick={handleClearFilters}>
-                    ✕ Limpar filtros
-                </button>
-            )}
         </div>
     );
 };

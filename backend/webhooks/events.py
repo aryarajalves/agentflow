@@ -123,17 +123,32 @@ async def list_webhook_events(
         if item.get('event_type') == 'followup' and item.get('agent_response')
     }
 
+    seen_template_keys = set()
     filtered_items = []
     for item in items:
         msg = (item.get('mensagem') or '').strip()
         resp = (item.get('agent_response') or '').strip()
         ev_type = item.get('event_type')
+        msg_type = item.get('message_type')
+        phone = (item.get('telefone') or '').strip()
 
         # Se for um eco (memória ou outgoing) e houver um evento de follow-up correspondente no lote, descartar o eco
         if ev_type in ('memory', 'message') and (item.get('dono') in ('agente', 'bot') or ev_type == 'memory'):
             check_txt = resp if resp and not resp.startswith("Modo Silencioso") else msg
             if check_txt and any(check_txt == f_text or check_txt in f_text or f_text in check_txt for f_text in followup_msgs_in_batch if f_text):
                 continue
+
+        # Consolidação de templates duplicados no lote (ex: eco ZapVoice + Webhook Memória)
+        if msg_type == 'template' or (resp and resp.startswith("Modo Silencioso (Disparo de Template)")):
+            content_key = resp if resp and not resp.startswith("Modo Silencioso") else msg
+            clean_content = re.sub(r'\s+', ' ', content_key).strip().lower()[:100]
+            phone_sfx = phone[-8:] if len(phone) >= 8 else phone
+            created_at_dt = item.get('created_at')
+            minute_block = int(created_at_dt.timestamp() // 180) if hasattr(created_at_dt, 'timestamp') else 0
+            tpl_key = (phone_sfx, clean_content, minute_block)
+            if tpl_key in seen_template_keys:
+                continue
+            seen_template_keys.add(tpl_key)
 
         if item.get('event_type') == 'memory' and item.get('dono') not in ('agente', 'bot'):
             if msg and any(msg in resp_item or resp_item in msg for resp_item in agent_responses_in_batch if resp_item):

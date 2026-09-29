@@ -252,6 +252,29 @@ export const useLeadHistoryEvents = (lead, webhook) => {
             });
         });
 
+        // 1.1 Identificar templates duplicados consecutivos (ex: disparo do ZapVoice + sincronização de memória)
+        const templateEvents = events.filter(e => e.message_type === 'template' || e.is_template || (e.agent_response && e.agent_response.includes('Disparo de Template')));
+        for (let i = 0; i < templateEvents.length; i++) {
+            const tA = templateEvents[i];
+            if (hiddenIds.has(tA.id)) continue;
+            const txtA = (tA.mensagem || tA.agent_response || tA.conteudo || '').replace(/^Modo Silencioso[^\n]*/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (!txtA) continue;
+            const timeA = new Date(tA.created_at).getTime();
+
+            for (let j = i + 1; j < templateEvents.length; j++) {
+                const tB = templateEvents[j];
+                if (hiddenIds.has(tB.id)) continue;
+                if (Math.abs(timeA - new Date(tB.created_at).getTime()) < 180000) {
+                    const txtB = (tB.mensagem || tB.agent_response || tB.conteudo || '').replace(/^Modo Silencioso[^\n]*/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                    if (txtB && (txtA === txtB || txtA.includes(txtB) || txtB.includes(txtA))) {
+                        const bHasMedia = (tB.mensagem || '').includes('[Conteúdo da Mídia');
+                        const aHasMedia = (tA.mensagem || '').includes('[Conteúdo da Mídia');
+                        hiddenIds.add(bHasMedia && !aHasMedia ? tA.id : tB.id);
+                    }
+                }
+            }
+        }
+
         // 2. Agrupamento de respostas imediatas do agente (apenas se geradas na MESMA interação imediata, < 15s)
         for (let i = 0; i < events.length; i++) {
             const current = events[i];

@@ -47,12 +47,12 @@ const QuestionCard = ({ question, index }) => {
                     <span 
                         className="uq-badge" 
                         style={{
-                            background: question.source === 'chatwoot' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                            color: question.source === 'chatwoot' ? '#818cf8' : '#34d399',
+                            background: (question.source === 'chatwoot' || question.source === 'zapvoice' || question.source === 'zapjords') ? 'rgba(99, 102, 241, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                            color: (question.source === 'chatwoot' || question.source === 'zapvoice' || question.source === 'zapjords') ? '#818cf8' : '#34d399',
                             border: '1px solid rgba(255, 255, 255, 0.05)'
                         }}
                     >
-                        {question.source === 'chatwoot' || question.source === 'zapvoice' ? '💬 ZapVoice' : '💻 Chat'}
+                        {(question.source === 'chatwoot' || question.source === 'zapvoice' || question.source === 'zapjords') ? '💬 ZapJords' : '💻 Chat'}
                     </span>
                 )}
                 {question.session_id && (
@@ -84,7 +84,11 @@ const QuestionCard = ({ question, index }) => {
                         🔑 Sessão: {question.chat_session_id}
                     </span>
                 )}
-                {question.agent_id && <span className="uq-agent-tag">🤖 Agente #{question.agent_id}</span>}
+                {question.agent_id && (
+                    <span className="uq-agent-tag" title={question.agent_name ? `Agente ID #${question.agent_id}` : undefined}>
+                        🤖 {question.agent_name || `Agente #${question.agent_id}`}
+                    </span>
+                )}
                 <span className="uq-date">🕐 {formatDate(question.created_at)}</span>
             </div>
 

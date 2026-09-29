@@ -68,7 +68,7 @@ def is_system_or_badge_message(m: dict) -> bool:
     if sender_type in ("system", "badge", "event", "log", "system_event"):
         return True
 
-    if msg_type in ("funnel_event", "system_event", "badge", "log", "tag_event", "label_event"):
+    if msg_type in ("funnel_event", "system_event", "badge", "log", "tag_event", "label_event", "unsupported"):
         return True
 
     if not content:
@@ -76,6 +76,11 @@ def is_system_or_badge_message(m: dict) -> bool:
         return not bool(m.get("media_url"))
 
     content_lower = content.lower()
+
+    # Mensagens técnicas de arquivos / mídias não suportadas (ex: '📎 Arquivo (unsupported) recebido')
+    # Tratadas como notificação de sistema/bot e rejeitadas sem processamento
+    if "(unsupported)" in content_lower or "[unsupported]" in content_lower or "arquivo (unsupported)" in content_lower:
+        return True
 
     # Menções a marcadores / etiquetas do sistema
     if "marcador(es)" in content_lower:

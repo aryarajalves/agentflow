@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Garante fuso horário de Brasília (UTC-3) por padrão
+export TZ="${TZ:-America/Sao_Paulo}"
+
 # Garante que binários instalados via pip estejam no PATH
 export PATH="/usr/local/bin:$PATH"
 

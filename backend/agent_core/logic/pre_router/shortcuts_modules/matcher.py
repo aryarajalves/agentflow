@@ -65,6 +65,33 @@ def check_programmatic_shortcuts(
         
     msg_no_emojis = msg_no_emojis.strip()
 
+    # 0. Atalho para Arquivo Não Suportado (ex: "📎 Arquivo (unsupported) recebido")
+    raw_lower = (raw_user_message or "").strip().lower()
+    if "(unsupported)" in raw_lower or "[unsupported]" in raw_lower or "arquivo (unsupported)" in raw_lower:
+        logger.info(f"🚫 [UNSUPPORTED FILE DETECTED] Mensagem '{raw_user_message}' classificada como arquivo não suportado/bot. Silenciando automação.")
+        return {
+            "eh_saudacao": False,
+            "eh_agradecimento": False,
+            "eh_agradecimento_recorrente": False,
+            "eh_mensagem_automatica": True,
+            "precisa_esclarecimento": False,
+            "resposta_esclarecimento": None,
+            "eh_anuncio": False,
+            "detalhe_anuncio": None,
+            "resposta_direta": None,
+            "perguntas_extraidas": "",
+            "lista_perguntas_extraidas": [],
+            "id_agente_alvo": getattr(main_agent, "id", None),
+            "precisa_ferramenta": False,
+            "chamada_ferramenta": None,
+            "precisa_rag": False,
+            "data_extraida": None,
+            "mensagem_original": raw_user_message,
+            "mensagem_melhorada": None,
+            "tipo_mensagem": "Arquivo Não Suportado (Ignorado)",
+            "_model_used": "shortcut-logic"
+        }
+
     # 1a. Atalho para Resposta de E-mail / Cadastro de Lead (fornecendo e-mail no fluxo de qualificação)
     email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', raw_user_message.strip())
     if email_match and len(raw_user_message.strip().split()) <= 4:

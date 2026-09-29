@@ -6,14 +6,14 @@ from typing import Optional, Dict, Any
 import redis as redis_lib
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from database import get_db
 from core.timezone import get_now_br, get_now_utc
 from core.websocket import manager
 from models import WebhookConfigModel, WebhookEventModel
 from webhook_tasks import process_webhook_automation, sync_memory_to_vector, process_media_content_task
-from .utils import normalize_phone, get_value_by_path, extract_and_compose_media_memory
+from .utils import normalize_phone, get_phone_suffix, texts_match_flexible, get_value_by_path, extract_and_compose_media_memory
 from .service import ensure_leads_table, upsert_lead, handle_keyword_handoffs, save_media_memory_to_user_memory
 from .import_chat_modules.helpers import is_system_or_badge_message
 
@@ -277,15 +277,19 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
                     if dup_check.scalar_one_or_none():
                         already_exists = True
 
-                # Deduplicação inteligente de ecos (Template / Follow-Up / Atendente):
-                # Se nos últimos 60 segundos já foi registrado um evento para este telefone
+                # Deduplicação inteligente de ecos (Template / Follow-Up / Atendente / Memória):
+                # Se nos últimos 120 segundos já foi registrado um evento para este telefone (com ou sem nono dígito)
                 # com o mesmo texto ou se o texto faz parte de um evento recente do agente/followup
                 if not already_exists and msg_out_text:
-                    cutoff_dt = get_now_utc() - timedelta(seconds=60)
+                    cutoff_dt = get_now_utc() - timedelta(seconds=120)
+                    phone_suffix = get_phone_suffix(phone, 8)
                     recent_events_res = await db.execute(
                         select(WebhookEventModel.agent_response, WebhookEventModel.mensagem).where(
                             WebhookEventModel.webhook_config_id == config.id,
-                            WebhookEventModel.telefone == phone,
+                            or_(
+                                WebhookEventModel.telefone == phone,
+                                WebhookEventModel.telefone.like(f"%{phone_suffix}")
+                            ),
                             WebhookEventModel.created_at >= cutoff_dt
                         ).order_by(WebhookEventModel.created_at.desc()).limit(10)
                     )
@@ -294,8 +298,8 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
                         r_msg_clean = (r_msg or "").strip()
                         valid_resp = r_resp_clean if not r_resp_clean.startswith("Modo Silencioso") else ""
                         if (
-                            (valid_resp and (msg_out_text == valid_resp or msg_out_text in valid_resp or valid_resp in msg_out_text)) or
-                            (r_msg_clean and (msg_out_text == r_msg_clean or msg_out_text in r_msg_clean or r_msg_clean in msg_out_text))
+                            (valid_resp and texts_match_flexible(msg_out_text, valid_resp)) or
+                            (r_msg_clean and texts_match_flexible(msg_out_text, r_msg_clean))
                         ):
                             already_exists = True
                             logger.info(f"⏭️ Mensagem de saída de eco descartada por duplicidade com evento recente de follow-up/agente para {phone}")
@@ -671,11 +675,26 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
     else:
         dono = str(dono_raw).lower()
 
+    # Filtro de Badges e Arquivos Não Suportados no Webhook de Memória
+    check_badge_dict = {
+        "content": mensagem_text,
+        "sender_type": dono,
+        "message_type": body.get("message_type") or "text",
+        "meta_data": body.get("meta_data")
+    }
+    if is_system_or_badge_message(check_badge_dict):
+        logger.info(f"⏭️ Webhook de memória ignorado: badge/não suportado descartado para {phone} ({mensagem_text[:50]})")
+        return {"ok": True, "status": "system_badge_ignored"}
+
     if dono not in ("agente", "bot"):
+        phone_suffix = get_phone_suffix(phone, 8)
         recent_agent_evt = await db.execute(
             select(WebhookEventModel).where(
                 WebhookEventModel.webhook_config_id == config.id,
-                WebhookEventModel.telefone == phone,
+                or_(
+                    WebhookEventModel.telefone == phone,
+                    WebhookEventModel.telefone.like(f"%{phone_suffix}")
+                ),
                 WebhookEventModel.agent_response.isnot(None),
                 WebhookEventModel.agent_response != ""
             ).order_by(WebhookEventModel.created_at.desc()).limit(5)
@@ -683,7 +702,7 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
         recent_evts = recent_agent_evt.scalars().all()
         for revt in recent_evts:
             if revt.agent_response and not revt.agent_response.startswith("Modo Silencioso") and mensagem_text and (
-                mensagem_text.strip() in revt.agent_response or revt.agent_response.strip() in mensagem_text
+                texts_match_flexible(mensagem_text, revt.agent_response)
             ):
                 dono = "agente"
                 break
@@ -756,11 +775,15 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
     )
 
     if is_agent_message:
-        cutoff_dt = get_now_utc() - timedelta(seconds=60)
+        cutoff_dt = get_now_utc() - timedelta(seconds=120)
+        phone_suffix = get_phone_suffix(phone, 8)
         recent_evts_res = await db.execute(
             select(WebhookEventModel.id, WebhookEventModel.agent_response, WebhookEventModel.mensagem).where(
                 WebhookEventModel.webhook_config_id == config.id,
-                WebhookEventModel.telefone == phone,
+                or_(
+                    WebhookEventModel.telefone == phone,
+                    WebhookEventModel.telefone.like(f"%{phone_suffix}")
+                ),
                 WebhookEventModel.created_at >= cutoff_dt
             ).order_by(WebhookEventModel.created_at.desc()).limit(10)
         )
@@ -769,8 +792,8 @@ async def receive_memory_webhook(token: str, request: Request, db: AsyncSession 
             r_msg_clean = (r_msg or "").strip()
             valid_resp = r_resp_clean if not r_resp_clean.startswith("Modo Silencioso") else ""
             if mensagem_text and (
-                (valid_resp and (mensagem_text.strip() == valid_resp or mensagem_text.strip() in valid_resp or valid_resp in mensagem_text.strip())) or
-                (r_msg_clean and (mensagem_text.strip() == r_msg_clean or mensagem_text.strip() in r_msg_clean or r_msg_clean in mensagem_text.strip()))
+                (valid_resp and texts_match_flexible(mensagem_text, valid_resp)) or
+                (r_msg_clean and texts_match_flexible(mensagem_text, r_msg_clean))
             ):
                 doc_str = media_info.get("document_content") or ""
                 if doc_str and doc_str not in valid_resp and doc_str not in r_msg_clean:

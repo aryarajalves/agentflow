@@ -56,6 +56,24 @@ def get_phone_suffix(phone: str, length: int = 8) -> str:
     return digits[-length:] if len(digits) >= length else digits
 
 
+def texts_match_flexible(text_a: Optional[str], text_b: Optional[str]) -> bool:
+    """
+    Compara dois textos de templates/mensagens de forma flexível,
+    desconsiderando diferenças de quebras de linha (\r\n vs \n),
+    múltiplos espaços e maiúsculas/minúsculas.
+    """
+    if not text_a or not text_b:
+        return False
+    clean_a = re.sub(r'\s+', ' ', str(text_a)).strip().lower()
+    clean_b = re.sub(r'\s+', ' ', str(text_b)).strip().lower()
+    if not clean_a or not clean_b:
+        return False
+    return clean_a == clean_b or clean_a in clean_b or clean_b in clean_a
+
+
+_MEDIA_TEXT_CACHE: Dict[str, str] = {}
+
+
 def extract_text_from_media_url(media_url: str, filename: str = "") -> str:
     """
     Baixa e extrai automaticamente o texto de um documento (PDF, DOCX, TXT, MD, CSV)
@@ -63,6 +81,9 @@ def extract_text_from_media_url(media_url: str, filename: str = "") -> str:
     """
     if not media_url or not str(media_url).startswith(("http://", "https://")):
         return ""
+
+    if media_url in _MEDIA_TEXT_CACHE:
+        return _MEDIA_TEXT_CACHE[media_url]
 
     url_clean = str(media_url).split("?")[0].lower()
     fname_clean = str(filename or "").lower()
@@ -115,6 +136,7 @@ def extract_text_from_media_url(media_url: str, filename: str = "") -> str:
 
             if text_result:
                 logger.info(f"📄 [EXTRAÇÃO AUTOMÁTICA DE DOCUMENTO] Texto extraído com sucesso de '{filename or media_url}' ({len(text_result)} caracteres).")
+                _MEDIA_TEXT_CACHE[media_url] = text_result
             return text_result
 
         # 2. DOCX
@@ -124,6 +146,7 @@ def extract_text_from_media_url(media_url: str, filename: str = "") -> str:
             text_result = "\n".join([p.text.strip() for p in doc.paragraphs if p.text and p.text.strip()]).strip()
             if text_result:
                 logger.info(f"📄 [EXTRAÇÃO AUTOMÁTICA DE DOCUMENTO] Texto DOCX extraído de '{filename or media_url}' ({len(text_result)} caracteres).")
+                _MEDIA_TEXT_CACHE[media_url] = text_result
             return text_result
 
         # 3. Texto plano (TXT, MD, CSV)
@@ -131,6 +154,7 @@ def extract_text_from_media_url(media_url: str, filename: str = "") -> str:
             text_result = resp.text.strip()
             if text_result:
                 logger.info(f"📄 [EXTRAÇÃO AUTOMÁTICA DE DOCUMENTO] Texto plano extraído de '{filename or media_url}' ({len(text_result)} caracteres).")
+                _MEDIA_TEXT_CACHE[media_url] = text_result
             return text_result
 
     except Exception as e:
@@ -161,8 +185,13 @@ def extract_and_compose_media_memory(body: Dict[str, Any], base_message: Optiona
         else (
             get_value_by_path(body, "template_content")
             or get_value_by_path(body, "content")
+            or get_value_by_path(body, "mensagem")
+            or get_value_by_path(body, "text")
+            or (get_value_by_path(body, "message") if isinstance(get_value_by_path(body, "message"), str) else None)
             or get_value_by_path(body, "message.template_content")
             or get_value_by_path(body, "message.content")
+            or get_value_by_path(body, "message.text")
+            or get_value_by_path(body, "message.mensagem")
             or ""
         )
     )

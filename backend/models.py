@@ -785,7 +785,31 @@ class QuestionFunnelModel(Base):
     )
 
 
+class PromptVaultModel(Base):
+    """Modelo para o Cofre de Prompts - Armazenamento de Prompts desacoplado do ciclo de vida dos agentes."""
+    __tablename__ = "prompt_vaults"
 
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, nullable=True, index=True)
+    name = Column(String(255), nullable=False) # Título ou identificador do backup
+    description = Column(Text, nullable=True) # Descrição/notas
+    source_agent_id = Column(Integer, nullable=True, index=True) # ID do agente de origem (sem cascade para persistir)
+    source_agent_name = Column(String(255), nullable=True) # Nome persistido do agente
+    backup_type = Column(String(50), default="manual", nullable=False) # 'manual', 'pre_deletion', 'auto'
+    
+    # Pacote Completo de Prompts
+    system_prompt = Column(Text, nullable=False, default="")
+    dynamic_prompt = Column(Text, nullable=True, default="")
+    pre_router_prompt = Column(Text, nullable=True)
+    unanswered_question_prompt = Column(Text, nullable=True)
+    tool_prompts = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, default=dict, nullable=True)
 
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-
+    __table_args__ = (
+        Index("idx_prompt_vault_client_id", "client_id"),
+        Index("idx_prompt_vault_backup_type", "backup_type"),
+        Index("idx_prompt_vault_created_at", "created_at"),
+    )

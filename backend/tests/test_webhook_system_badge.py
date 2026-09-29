@@ -39,3 +39,24 @@ def test_is_system_or_badge_message_detection():
         "message_type": "template",
         "sender_type": "system"
     }) is False
+
+    # Mensagens de Arquivo / Mídia Não Suportada devem ser tratadas como sistema/badge e ignoradas
+    assert is_system_or_badge_message({
+        "content": "📎 Arquivo (unsupported) recebido",
+        "sender_type": "contact"
+    }) is True
+
+    assert is_system_or_badge_message({
+        "content": "Arquivo (unsupported) recebido",
+        "sender_type": "contact"
+    }) is True
+
+    assert is_system_or_badge_message({
+        "content": "(unsupported)",
+        "sender_type": "contact"
+    }) is True
+
+    assert is_system_or_badge_message({
+        "message_type": "unsupported",
+        "content": "qualquer conteudo"
+    }) is True

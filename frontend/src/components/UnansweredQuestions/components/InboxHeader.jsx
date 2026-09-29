@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuestions } from '../QuestionsContext';
 
 const InboxHeader = ({ onRefresh }) => {
-    const { questions, loading, selectedIds, setSelectedIds, setActiveModal } = useQuestions();
+    const { questions, loading, selectedIds, setSelectedIds, setActiveModal, isLiveConnected } = useQuestions();
 
     const isAllSelected = questions.length > 0 && questions.every(q => selectedIds.has(q.id));
 
@@ -21,7 +21,33 @@ const InboxHeader = ({ onRefresh }) => {
             <div className="header-left">
                 <div className="header-icon">📥</div>
                 <div>
-                    <h3>Inbox de Dúvidas</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3>Inbox de Dúvidas</h3>
+                        <span 
+                            title={isLiveConnected ? "Conectado ao vivo via WebSocket" : "Conectando ao vivo..."}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.72rem',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                background: isLiveConnected ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                                color: isLiveConnected ? '#4ade80' : '#facc15',
+                                border: `1px solid ${isLiveConnected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
+                                fontWeight: 500
+                            }}
+                        >
+                            <span style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                backgroundColor: isLiveConnected ? '#22c55e' : '#eab308',
+                                boxShadow: isLiveConnected ? '0 0 6px #22c55e' : 'none'
+                            }}></span>
+                            {isLiveConnected ? 'Ao vivo' : 'Conectando'}
+                        </span>
+                    </div>
                     <p>{loading ? 'Carregando...' : `${questions.length} pendentes`}</p>
                 </div>
             </div>

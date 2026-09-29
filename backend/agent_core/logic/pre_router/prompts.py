@@ -95,7 +95,7 @@ Sua função é séxtupla:
    - Qualquer interação iniciada por um cliente real querendo atendimento.
    - Para todas as exceções acima, você DEVE OBRIGATORIAMENTE definir 'eh_mensagem_automatica' como FALSE.
 
-   Se você identificar que a mensagem do usuário é VERDADEIRAMENTE uma mensagem automática de ausência comercial ou bot do outro lado:
+   Se você identificar que a mensagem do usuário é VERDADEIRAMENTE uma mensagem automática de ausência comercial, bot do outro lado ou evento técnico de mídia não suportada (Ex: "📎 Arquivo (unsupported) recebido", "Arquivo (unsupported) recebido", "(unsupported)"):
    - Defina 'eh_mensagem_automatica' as true.
    - Defina 'eh_saudacao' as false.
    - Defina 'resposta_direta' como null (não responderemos nada para evitar loops).

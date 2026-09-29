@@ -1,5 +1,18 @@
 import os
-from celery import Celery
+import time
+from celery import Celery, signals
+from core.logging_setup import configure_logging
+
+# Garante fuso horário de Brasília no processo Python
+if hasattr(time, "tzset"):
+    os.environ["TZ"] = os.getenv("TZ", "America/Sao_Paulo")
+    time.tzset()
+
+# Configura logger persistente e formatado no fuso de Brasília para o Celery
+@signals.setup_logging.connect
+def setup_celery_logging(**kwargs):
+    component = os.getenv("CELERY_COMPONENT_NAME", "worker")
+    configure_logging(component)
 
 # Configuração do Celery com Redis como Broker e Backend
 redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")

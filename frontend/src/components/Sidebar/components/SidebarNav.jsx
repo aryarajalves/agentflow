@@ -20,6 +20,16 @@ export default function SidebarNav({
                             <span className="nav-label">Meus Agentes</span>
                             <div className="active-indicator"></div>
                         </NavLink>
+                        {(isSuperAdmin || isAdmin) && (
+                            <NavLink
+                                to="/prompt-vault"
+                                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                            >
+                                <span className="nav-icon">🛡️</span>
+                                <span className="nav-label">Cofre de Prompts</span>
+                                <div className="active-indicator"></div>
+                            </NavLink>
+                        )}
                     </div>
 
                     {(isSuperAdmin || isAdmin) ? (

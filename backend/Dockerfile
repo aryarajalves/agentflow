@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     libssl-dev \
     ffmpeg \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Configuração de timezone padrão para horário de Brasília
+ENV TZ=America/Sao_Paulo
 
 # Upgrade pip
 RUN pip install --upgrade pip

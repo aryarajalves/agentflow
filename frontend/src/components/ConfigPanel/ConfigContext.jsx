@@ -35,7 +35,18 @@ export const ConfigProvider = ({ children }) => {
     const [anthropicConnected, setAnthropicConnected] = useState(true);
 
     // Form States
-    const [name, setName] = useState(isNew ? 'Novo Agente' : '');
+    const getInitialPrefill = () => {
+        if (!isNew) return null;
+        try {
+            const raw = sessionStorage.getItem('prefill_agent_prompt');
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    };
+    const prefillData = getInitialPrefill();
+
+    const [name, setName] = useState(prefillData?.name || (isNew ? 'Novo Agente' : ''));
     const [description, setDescription] = useState('');
     const [selectedModel, setSelectedModel] = useState('');
     const [fallbackModel, setFallbackModel] = useState(null);
@@ -51,9 +62,9 @@ export const ConfigProvider = ({ children }) => {
     const [dateAwarenessPastDays, setDateAwarenessPastDays] = useState(7);
     const [dateAwarenessFutureDays, setDateAwarenessFutureDays] = useState(7);
     const [simulatedTime, setSimulatedTime] = useState('');
-    const [systemPrompt, setSystemPrompt] = useState('Você é um assistente útil e inteligente.');
+    const [systemPrompt, setSystemPrompt] = useState(prefillData?.system_prompt !== undefined ? prefillData.system_prompt : 'Você é um assistente útil e inteligente.');
     const [dynamicPrompt, setDynamicPrompt] = useState('');
-    const [preRouterPrompt, setPreRouterPrompt] = useState('');
+    const [preRouterPrompt, setPreRouterPrompt] = useState(prefillData?.pre_router_prompt || '');
     const [contextWindow, setContextWindow] = useState(5);
     
     // Knowledge & Tools
@@ -71,7 +82,7 @@ export const ConfigProvider = ({ children }) => {
     const [semanticCacheEnabled, setSemanticCacheEnabled] = useState(true);
     const [semanticCacheThreshold, setSemanticCacheThreshold] = useState(92); // Percentual (70-99) exibido na UI
     const [inboxCaptureEnabled, setInboxCaptureEnabled] = useState(true);
-    const [toolPrompts, setToolPrompts] = useState({});
+    const [toolPrompts, setToolPrompts] = useState(prefillData?.tool_prompts || {});
 
     // Messages
     const [initialMessage, setInitialMessage] = useState('');
@@ -111,7 +122,7 @@ export const ConfigProvider = ({ children }) => {
     const [handoffEnabled, setHandoffEnabled] = useState(false);
     const [unansweredHandoffEnabled, setUnansweredHandoffEnabled] = useState(true);
     const [unansweredHandoffLimit, setUnansweredHandoffLimit] = useState(2);
-    const [unansweredQuestionPrompt, setUnansweredQuestionPrompt] = useState('');
+    const [unansweredQuestionPrompt, setUnansweredQuestionPrompt] = useState(prefillData?.unanswered_question_prompt || '');
     const [responseTranslationEnabled, setResponseTranslationEnabled] = useState(false);
     const [responseTranslationFallbackLang, setResponseTranslationFallbackLang] = useState('pt-br');
 

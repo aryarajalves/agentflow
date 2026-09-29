@@ -112,7 +112,7 @@ const AgentCard = ({ agent }) => {
             )}
 
             <div className="card-body">
-                <h3 className="card-title">{agent.name}</h3>
+                <h3 className="card-title" title={agent.name}>{agent.name}</h3>
                 <p className="description">
                     {agent.description || "Sem descrição definida."}
                 </p>
@@ -135,7 +135,27 @@ const AgentCard = ({ agent }) => {
             <ConfirmModal
                 isOpen={showConfirm}
                 title="Confirmar Exclusão"
-                message={<>Tem certeza que deseja excluir o agente <strong>{agent.name}</strong>? Esta ação não pode ser desfeita.</>}
+                message={
+                    <>
+                        <span style={{ display: 'block', margin: '0 0 10px 0' }}>
+                            Tem certeza que deseja excluir o agente <strong>{agent.name}</strong>?
+                        </span>
+                        <span style={{
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            border: '1px solid rgba(56, 189, 248, 0.25)',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            fontSize: '12.5px',
+                            color: '#7dd3fc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            <span>🛡️</span>
+                            <span>O prompt completo deste agente será guardado automaticamente no <strong>Cofre de Prompts</strong> para sua segurança.</span>
+                        </span>
+                    </>
+                }
                 onConfirm={() => { confirmAction(); }}
                 onCancel={() => setShowConfirm(false)}
                 confirmText="Sim, Excluir"
