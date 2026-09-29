@@ -669,12 +669,12 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 *(Aviso: Conforme as regras do projeto, nunca gerar ou dar push em tags `latest` no Docker Hub; use sempre tags de versão estritas.)*
 
 ### Backend
-1. **Build:** `docker build -t aryalvesfernandes/configuraagente:backend-1.2.8 ./backend`
-2. **Push:** `docker push aryalvesfernandes/configuraagente:backend-1.2.8`
+1. **Build:** `docker build -t aryalvesfernandes/configuraagente:backend-1.2.9 ./backend`
+2. **Push:** `docker push aryalvesfernandes/configuraagente:backend-1.2.9`
 
 ### Frontend
-1. **Build:** `docker build --target production -t aryalvesfernandes/configuraagente:frontend-1.2.8 ./frontend`
-2. **Push:** `docker push aryalvesfernandes/configuraagente:frontend-1.2.8`
+1. **Build:** `docker build --target production -t aryalvesfernandes/configuraagente:frontend-1.2.9 ./frontend`
+2. **Push:** `docker push aryalvesfernandes/configuraagente:frontend-1.2.9`
 
 
 
