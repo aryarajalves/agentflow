@@ -202,6 +202,8 @@ async def process_message(
         on_step=on_step
     )
     rag_context = rag_data["rag_context"]
+    if rag_context and context_variables is not None:
+        context_variables["rag_context"] = rag_context
     rag_queries = rag_data["rag_queries"]
     rag_query_str = rag_data["rag_query_str"]
     all_relevant = rag_data["all_relevant"]
@@ -290,7 +292,8 @@ async def process_message(
                         
                         cached_toks = 0
                         if hasattr(completion.usage, 'prompt_tokens_details') and completion.usage.prompt_tokens_details:
-                            cached_toks = getattr(completion.usage, 'prompt_tokens_details', 'cached_tokens', 0) or 0
+                            details = completion.usage.prompt_tokens_details
+                            cached_toks = getattr(details, 'cached_tokens', 0) or (details.get('cached_tokens', 0) if isinstance(details, dict) else 0) or 0
                         elif hasattr(completion.usage, 'cache_read_input_tokens'):
                             cached_toks = getattr(completion.usage, 'cache_read_input_tokens', 0) or 0
                         elif hasattr(completion.usage, 'extra_fields') and 'prompt_cache_hit_tokens' in completion.usage.extra_fields:
@@ -329,7 +332,8 @@ async def process_message(
                     db=db,
                     context_variables=context_variables,
                     history=history,
-                    on_step=on_step
+                    on_step=on_step,
+                    total_usage=total_usage
                 )
                 if h_info.get("handoff"):
                     handoff_data = h_info

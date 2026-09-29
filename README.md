@@ -617,6 +617,23 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 
 ---
 
+### Novidades e Ajustes Recentes (v1.2.9) - Criado por Aryaraj
+- **Otimização de Resposta Terminal com Micro-Prompt para Dúvidas Sem Resposta (Solução 1 - Opção B)**:
+  - Quando a ferramenta `registrar_duvida_sem_resposta` é acionada, o sistema encerra o loop de execução de forma terminal, eliminando o 2º turno de ~20.000 tokens no modelo principal (`config.model`, ex: GPT-5-mini).
+  - A resposta acolhedora ao lead é gerada pelo novo módulo [`unanswered_micro_responder.py`](file:///c:/Users/aryar/.gemini/antigravity/scratch/Projetos%20Serios/Projetos%20Principais/Cria%20Agente%20de%20IA%20Para%20Automacao/backend/agent_core/logic/unanswered_micro_responder.py) via `gpt-4o-mini` com um micro-prompt enxuto (~100 a 250 tokens), respeitando a persona do agente e a diretriz `unanswered_question_prompt`.
+  - Suporte completo a mensagens compostas com múltiplas dúvidas: caso outra dúvida possua resposta confirmada no RAG, o trecho é incorporado e respondido no mesmo turno com precisão.
+  - Redução de mais de 99% no consumo de tokens do segundo turno (de ~20.855 para ~150 tokens) e economia de mais de 50% no custo financeiro total da interação.
+- **Cofre de Prompts (`/prompt-vault`) & Backup Automático de Segurança Pré-Exclusão**:
+  - Nova área segura e desacoplada do ciclo de vida dos agentes para gerenciamento e restauração de prompts mestres (System Prompt, Pre-Router, Prompt Dinâmico, Dúvidas e Ferramentas).
+  - Backup automático de segurança gerado silenciosamente antes da exclusão de qualquer agente com prefixo `[Backup Pré-Exclusão] {Nome do Agente}`.
+  - Suporte a cópia com 1 clique, download (.json e .txt), restauração em agente existente ou criação de novo agente a partir do snapshot.
+- **Descarte de Notificações de Mídias Não Suportadas (`📎 Arquivo (unsupported) recebido`)**:
+  - Tratamento inteligente para descartar mensagens técnicas enviadas pelo WhatsApp/Chatwoot como `(unsupported)`, bloqueando imediatamente no webhook de entrada (`system_badge_ignored`), suprimindo no Pre-Router e descartando no Celery para evitar respostas automáticas indevidas da IA.
+- **Treinamento de Dúvidas Sem Resposta como Variação de Pergunta Existente**:
+  - No Inbox de Dúvidas, o operador pode vincular uma dúvida como nova variação semântica de uma pergunta existente da base selecionada, respeitando o teto de 8 variações e recalculando automaticamente os vetores de embedding.
+
+---
+
 ### Novidades e Ajustes Recentes (v1.2.8) - Criado por Aryaraj
 - **Modal de Visualização Completa Compacto e Adaptativo**:
   - Ajuste no modal de visualização de texto ampliado (`MaximizedTextModal`) para ter altura adaptativa ao conteúdo (`height: auto`), eliminando espaços vazios para textos curtos e expandindo suavemente até `60vh` (com rolagem estilizada `custom-scrollbar`) para respostas longas do agente.

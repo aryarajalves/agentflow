@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import inspect
 from datetime import datetime
 from ...clients import get_openai_client
 
@@ -83,19 +84,34 @@ async def handle_unanswered_question(db, context_variables, func_args_str, histo
                     AgentConfigModel.unanswered_handoff_limit,
                     AgentConfigModel.unanswered_question_prompt
                 ).where(AgentConfigModel.id == agent_id)
-                agent_res = await db.execute(agent_stmt)
-                agent_row = agent_res.first()
-                if agent_row:
-                    handoff_limit = agent_row.unanswered_handoff_limit
-                    custom_resp_prompt = agent_row.unanswered_question_prompt
+                try:
+                    agent_res = await db.execute(agent_stmt)
+                    if hasattr(agent_res, "first"):
+                        first_fn = agent_res.first
+                        if callable(first_fn):
+                            agent_row = first_fn()
+                            if agent_row and not inspect.iscoroutine(agent_row):
+                                handoff_limit = getattr(agent_row, "unanswered_handoff_limit", 2)
+                                custom_resp_prompt = getattr(agent_row, "unanswered_question_prompt", None)
+                except Exception as e_cfg:
+                    logger.debug(f"Aviso ao consultar config de dúvidas do agente: {e_cfg}")
 
-            from sqlalchemy import select, func
-            count_stmt = select(func.count()).select_from(UnansweredQuestionModel).where(
-                UnansweredQuestionModel.agent_id == agent_id,
-                UnansweredQuestionModel.session_id == session_id
-            )
-            count_res = await db.execute(count_stmt)
-            total_unanswered = count_res.scalar() or 0
+            total_unanswered = 0
+            try:
+                from sqlalchemy import select, func
+                count_stmt = select(func.count()).select_from(UnansweredQuestionModel).where(
+                    UnansweredQuestionModel.agent_id == agent_id,
+                    UnansweredQuestionModel.session_id == session_id
+                )
+                count_res = await db.execute(count_stmt)
+                if hasattr(count_res, "scalar"):
+                    scalar_fn = count_res.scalar
+                    if callable(scalar_fn):
+                        val = scalar_fn()
+                        if val is not None and not inspect.iscoroutine(val) and isinstance(val, (int, float)):
+                            total_unanswered = int(val)
+            except Exception as e_cnt:
+                logger.debug(f"Aviso ao contar dúvidas sem resposta: {e_cnt}")
 
             # Validação do transbordo humano:
             # Se handoff_limit for 0 ou None, o robô NUNCA transfere para suporte humano por dúvidas não respondidas.

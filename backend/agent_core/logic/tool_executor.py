@@ -95,7 +95,8 @@ async def execute_tool_calls(
     db,
     context_variables: dict,
     history: list,
-    on_step: callable = None
+    on_step: callable = None,
+    total_usage=None
 ) -> tuple:
     """Executa as ferramentas acionadas pelo modelo na iteração atual."""
     handoff_data = {"handoff": False, "destino": None, "motivo": None}
@@ -194,6 +195,49 @@ async def execute_tool_calls(
             tool_result = await fn_unanswered(db, context_variables, json.dumps(tool_args), history, config.id)
             if "AUTOMATICAMENTE TRANSFERIDO PARA O SUPORTE HUMANO" in str(tool_result):
                 handoff_data = {"handoff": True, "destino": "humano", "motivo": f"Dúvida sem resposta acionada > 1 vez: {tool_args.get('pergunta')}"}
+            
+            # Opção B: Resposta Terminal via Micro-Prompt Ultraleve (gpt-4o-mini)
+            # Evita o segundo turno pesado (~20.000 tokens) no modelo principal
+            from .unanswered_micro_responder import generate_unanswered_micro_response
+            
+            unanswered_q = tool_args.get("pergunta", "")
+            raw_user_msg = (context_variables or {}).get("raw_user_message")
+            if not raw_user_msg:
+                user_msgs = [m for m in messages if isinstance(m, dict) and m.get("role") == "user"]
+                if user_msgs:
+                    raw_user_msg = user_msgs[-1].get("content", "")
+                elif history:
+                    u_h = [h for h in history if isinstance(h, dict) and h.get("role") == "user"]
+                    if u_h:
+                        raw_user_msg = u_h[-1].get("content", "")
+            
+            rag_ctx = (context_variables or {}).get("rag_context", "")
+            
+            micro_resp, micro_usage = await generate_unanswered_micro_response(
+                user_message=str(raw_user_msg or unanswered_q),
+                unanswered_question=unanswered_q,
+                agent_config=config,
+                tool_output=str(tool_result),
+                rag_context=rag_ctx,
+                on_step=on_step
+            )
+            
+            if total_usage is not None:
+                total_usage.mini_prompt += micro_usage.get("prompt_tokens", 0)
+                total_usage.mini_completion += micro_usage.get("completion_tokens", 0)
+            
+            last_response = micro_resp
+            is_handoff_terminal = True
+            
+            messages.append({"tool_call_id": tool_call.id, "role": "tool", "name": tool_name, "content": tool_result})
+            tool_calls_log.append({
+                "name": tool_name,
+                "args": json.dumps(tool_args, ensure_ascii=False),
+                "output": tool_result
+            })
+            if on_step:
+                on_step(f"✅ Ferramenta {tool_name} finalizada (Micro-Prompt terminal)", f"Retorno: {tool_result}")
+            break
         elif tool_name == "google_calendar_manager":
             tool_result = await fn_calendar(db, context_variables, tool_args)
         elif tool_name == "lead_qualificado":
