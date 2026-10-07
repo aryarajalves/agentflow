@@ -29,6 +29,8 @@ export default function TrainingSetupForm({
     onGenerate
 }) {
     const isQaMode = method === 'qa';
+    const isChunksMode = method === 'chunks';
+    const isBothMode = method === 'both';
 
     return (
         <div className="training-setup-wrapper">
@@ -43,7 +45,7 @@ export default function TrainingSetupForm({
                     <span className="training-tab-icon">🧠</span>
                     <div>
                         <div className="training-tab-title">Perguntas &amp; Respostas</div>
-                        <div className="training-tab-desc">Geração automática com IA</div>
+                        <div className="training-tab-desc">Geração com IA</div>
                     </div>
                     {isQaMode && (
                         <span style={{ marginLeft: 'auto', fontSize: '0.7rem', background: 'rgba(168,85,247,0.2)', color: '#c084fc', padding: '2px 8px', borderRadius: '20px', fontWeight: 700 }}>
@@ -53,16 +55,33 @@ export default function TrainingSetupForm({
                 </button>
                 <button 
                     role="tab" 
-                    aria-selected={!isQaMode}
-                    className={`training-method-tab${!isQaMode ? ' active' : ''}`}
+                    aria-selected={isChunksMode}
+                    className={`training-method-tab${isChunksMode ? ' active' : ''}`}
                     onClick={() => setMethod('chunks')}
                 >
                     <span className="training-tab-icon">📑</span>
                     <div>
-                        <div className="training-tab-title">Transcrição Direta</div>
-                        <div className="training-tab-desc">Dividir em trechos (chunks)</div>
+                        <div className="training-tab-title">Trechos (Chunks)</div>
+                        <div className="training-tab-desc">Fatiar transcrição</div>
                     </div>
-                    {!isQaMode && (
+                    {isChunksMode && (
+                        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', background: 'rgba(168,85,247,0.2)', color: '#c084fc', padding: '2px 8px', borderRadius: '20px', fontWeight: 700 }}>
+                            ATIVO
+                        </span>
+                    )}
+                </button>
+                <button 
+                    role="tab" 
+                    aria-selected={isBothMode}
+                    className={`training-method-tab${isBothMode ? ' active' : ''}`}
+                    onClick={() => setMethod('both')}
+                >
+                    <span className="training-tab-icon">⚡</span>
+                    <div>
+                        <div className="training-tab-title">Ambos (P&amp;R + Chunks)</div>
+                        <div className="training-tab-desc">5 P&amp;R + Chunks da aula</div>
+                    </div>
+                    {isBothMode && (
                         <span style={{ marginLeft: 'auto', fontSize: '0.7rem', background: 'rgba(168,85,247,0.2)', color: '#c084fc', padding: '2px 8px', borderRadius: '20px', fontWeight: 700 }}>
                             ATIVO
                         </span>
@@ -72,7 +91,9 @@ export default function TrainingSetupForm({
 
             {/* Info contextual */}
             <div className="training-info-block">
-                {isQaMode ? (
+                {isBothMode ? (
+                    <p>O sistema formula <strong style={{ color: '#c084fc' }}>perguntas e respostas didáticas via IA</strong> e simultaneamente fatia o texto em <strong style={{ color: '#60a5fa' }}>trechos (chunks) contínuos</strong>, unindo o melhor dos dois mundos.</p>
+                ) : isQaMode ? (
                     <p>A IA lê o texto completo e formula <strong style={{ color: '#c084fc' }}>perguntas e respostas didáticas estruturadas</strong> para treinar o agente com precisão.</p>
                 ) : (
                     <p>O texto é dividido em <strong style={{ color: '#60a5fa' }}>trechos sequenciais</strong> e inserido diretamente na base, preservando o conteúdo bruto da transcrição.</p>
@@ -108,7 +129,7 @@ export default function TrainingSetupForm({
             </div>
 
             {/* Opções por método */}
-            {isQaMode ? (
+            {(isQaMode || isBothMode) && (
                 <div className="training-meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                     <div className="training-form-group">
                         <label>Quantidade de Perguntas</label>
@@ -152,8 +173,10 @@ export default function TrainingSetupForm({
                         </select>
                     </div>
                 </div>
-            ) : (
-                <div className="training-meta-grid">
+            )}
+
+            {(isChunksMode || isBothMode) && (
+                <div className="training-meta-grid" style={{ marginTop: isBothMode ? '1rem' : 0 }}>
                     <div className="training-form-group">
                         <label>Tamanho de Cada Trecho</label>
                         <select 
@@ -194,9 +217,9 @@ export default function TrainingSetupForm({
                     id="btn-generate-training"
                 >
                     {isGenerating ? (
-                        <><span className="training-spinner" />{isQaMode ? 'Analisando com IA...' : 'Quebrando em Trechos...'}</>
+                        <><span className="training-spinner" />{isBothMode ? 'Processando P&R e Chunks...' : isQaMode ? 'Analisando com IA...' : 'Quebrando em Trechos...'}</>
                     ) : (
-                        isQaMode ? 'Gerar Perguntas & Respostas com IA 🤖' : 'Gerar Trechos da Transcrição 📑'
+                        isBothMode ? 'Gerar Ambos (P&R + Chunks) ⚡' : isQaMode ? 'Gerar Perguntas & Respostas com IA 🤖' : 'Gerar Trechos da Transcrição 📑'
                     )}
                 </button>
             </div>

@@ -676,8 +676,29 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
   - Configuração do fuso `America/Sao_Paulo` nos containers de backend, worker e beat no `docker-compose-producao.yml` e `docker-compose-local.yml`.
   - Instalação e configuração de `tzdata` com `ENV TZ=America/Sao_Paulo` no `backend/Dockerfile` e inicialização no `backend/entrypoint.sh`.
   - Implementação do `BrasiliaFormatter` em `backend/core/logging_setup.py` e hooks no Celery (`setup_logging`) para garantir que os timestamps de console e arquivos de log persistentes (`/app/logs/*.log`) emitam o horário oficial de Brasília.
-- **Atualização de Segurança de Dependências**:
-  - Correção de vulnerabilidade crítica no pacote `anyio` (atualizado para v4.15.1) e alinhamento do `typing_extensions` (v4.16.0), passando com 100% de conformidade nas auditorias de segurança do backend e frontend.
+### Novidades e Ajustes Recentes (v1.3.0) - Criado por Aryaraj
+- **Geração e Gestão de Chaves de API (API Key) para Integrações Externas**:
+  - Implementação de suporte a chaves individuais por usuário (`UserModel.api_key`), permitindo que aplicações, webhooks e interfaces de terceiros consumam os endpoints protegidos do sistema através do header padrão `X-API-Key`.
+  - Novos endpoints de autenticação e ciclo de vida de credenciais:
+    - `POST /users/me/generate-api-key`: Gera chaves de alta entropia com prefixo padronizado `ag_live_...`.
+    - `DELETE /users/me/revoke-api-key`: Revogação imediata da chave ativa do usuário autenticado.
+    - `GET /users/me`: Retorna os dados completos do perfil com a `api_key` vinculada.
+  - **Validação Resiliente e Híbrida (`verify_api_key`)**: Compatibilidade retroativa total com a chave mestre global do ambiente (`AGENT_API_KEY`) combinada à validação dinâmica das chaves individuais dos usuários ativos no banco PostgreSQL.
+  - Script de migração de schema idempotente: [`backend/scripts/add_api_key_to_users.py`](backend/scripts/add_api_key_to_users.py) e registro em [`docs/DATABASE_SCHEMA_LOG.md`](docs/DATABASE_SCHEMA_LOG.md).
+
+- **Reestruturação Modular em Abas do Modal de Configurações**:
+  - Reorganização completa do `ProfileSettingsModal` sob a estética **Glassmorphism Premium**, dividindo as preferências em três abas especializadas:
+    1. 👤 **Perfil**: Edição de Nome Completo, E-mail e Senha de acesso (com proteção de credenciais mestras para Super Admin).
+    2. 🏢 **White-Label**: Nome da empresa, upload com pré-visualização e remoção de logotipo personalizado e controle de tamanho da marca na barra lateral.
+    3. 🔑 **Chave API**: Monitoramento do status da chave (`🟢 Ativa`), campo de exibição protegido com botão de visualização em texto plano (👁️/🙈), cópia instantânea com feedback visual, botão de geração/regeneração com modal centralizado de confirmação contra ações acidentais, revogação e guia prático de integração com exemplo de envio de header.
+
+- **Processamento de Aulas em Modo Duplo (Perguntas & Respostas + Chunks Semânticos)**:
+  - Adição do endpoint `POST /knowledge-bases/{kb_id}/generate-qa-and-chunks` para ingerir transcrições de vídeo-aulas gerando simultaneamente até 5 perguntas frequentes com respostas pedagógicas e chunks de texto contínuo com overlap de contexto e embeddings OpenAI automáticos.
+  - Integração no `TrainingModal` com a opção "Ambos (P&R + Chunks)", enriquecendo a precisão da busca RAG vetorial e textual (FTS) das bases de conhecimento.
+
+- **Auditoria e Cobertura de Testes Unitários (100% de Sucesso)**:
+  - Backend: `backend/tests/test_user_api_key.py` e `backend/tests/test_qa_and_chunks.py`.
+  - Frontend: `frontend/src/test/components/ProfileSettingsModal.test.jsx` e `frontend/src/test/components/TrainingModalBoth.test.jsx`.
 
 ---
 

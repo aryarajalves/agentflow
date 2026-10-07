@@ -329,6 +329,7 @@ class UserModel(Base):
     company_name = Column(String, nullable=True)
     company_logo = Column(Text, nullable=True)
     company_logo_size = Column(String, nullable=True, default="medium")
+    api_key = Column(String, unique=True, index=True, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

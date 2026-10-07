@@ -28,6 +28,11 @@ export function useSidebarProfile() {
     const isAdmin = userRole === 'Admin';
     const isUser = userRole === 'Usuário';
 
+    const [activeTab, setActiveTab] = useState('profile');
+    const [apiKey, setApiKey] = useState('');
+    const [generatingKey, setGeneratingKey] = useState(false);
+    const [revokingKey, setRevokingKey] = useState(false);
+
     const fetchUserData = async () => {
         try {
             const response = await fetch(`${API_URL}/users/me`, {
@@ -46,6 +51,7 @@ export function useSidebarProfile() {
                     company_logo: data.company_logo || '',
                     company_logo_size: data.company_logo_size || 'medium'
                 });
+                setApiKey(data.api_key || '');
                 
                 if (data.company_name !== undefined) {
                     localStorage.setItem('company_name', data.company_name || '');
@@ -62,6 +68,58 @@ export function useSidebarProfile() {
             }
         } catch (error) {
             console.error("Erro ao carregar dados do usuário:", error);
+        }
+    };
+
+    const handleGenerateApiKey = async () => {
+        setGeneratingKey(true);
+        setStatus({ type: '', message: '' });
+        try {
+            const response = await fetch(`${API_URL}/users/me/generate-api-key`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+                    'X-API-Key': AGENT_API_KEY
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setApiKey(data.api_key);
+                setStatus({ type: 'success', message: 'Nova Chave de API gerada com sucesso!' });
+                return data.api_key;
+            } else {
+                const err = await response.json();
+                setStatus({ type: 'error', message: err.detail || 'Erro ao gerar chave de API.' });
+            }
+        } catch (error) {
+            setStatus({ type: 'error', message: 'Falha de conexão ao gerar chave de API.' });
+        } finally {
+            setGeneratingKey(false);
+        }
+    };
+
+    const handleRevokeApiKey = async () => {
+        setRevokingKey(true);
+        setStatus({ type: '', message: '' });
+        try {
+            const response = await fetch(`${API_URL}/users/me/revoke-api-key`, {
+                method: 'DELETE',
+                headers: { 
+                    'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+                    'X-API-Key': AGENT_API_KEY
+                }
+            });
+            if (response.ok) {
+                setApiKey('');
+                setStatus({ type: 'success', message: 'Chave de API revogada com sucesso!' });
+            } else {
+                const err = await response.json();
+                setStatus({ type: 'error', message: err.detail || 'Erro ao revogar chave.' });
+            }
+        } catch (error) {
+            setStatus({ type: 'error', message: 'Falha de conexão ao revogar chave.' });
+        } finally {
+            setRevokingKey(false);
         }
     };
 
@@ -116,6 +174,7 @@ export function useSidebarProfile() {
 
     const openSettings = () => {
         setStatus({ type: '', message: '' });
+        setActiveTab('profile');
         fetchUserData();
         setShowSettingsModal(true);
     };
@@ -125,6 +184,13 @@ export function useSidebarProfile() {
         setShowLogoutModal,
         showSettingsModal,
         setShowSettingsModal,
+        activeTab,
+        setActiveTab,
+        apiKey,
+        generatingKey,
+        revokingKey,
+        handleGenerateApiKey,
+        handleRevokeApiKey,
         userData,
         setUserData,
         loading,

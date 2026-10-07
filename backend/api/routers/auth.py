@@ -33,9 +33,19 @@ async def get_me(current_email: str = Depends(get_current_user), db: AsyncSessio
         admin_email = env_vars.get("ADMIN_EMAIL") or os.getenv("ADMIN_EMAIL") or "admin@agente.com"
         
         if current_email == admin_email:
-            return {"id": 0, "name": "Admin Super", "email": admin_email, "role": "Super Admin", "company_name": None, "company_logo": None, "company_logo_size": "medium"}
+            return {"id": 0, "name": "Admin Super", "email": admin_email, "role": "Super Admin", "company_name": None, "company_logo": None, "company_logo_size": "medium", "api_key": None}
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return user
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "status": user.status,
+        "company_name": user.company_name,
+        "company_logo": user.company_logo,
+        "company_logo_size": user.company_logo_size,
+        "api_key": user.api_key
+    }
 
 @router.put("/users/me", dependencies=[Depends(verify_api_key)])
 async def update_me(user_update: UserUpdate, current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -90,8 +100,56 @@ async def update_me(user_update: UserUpdate, current_email: str = Depends(get_cu
         "status": user.status,
         "company_name": user.company_name,
         "company_logo": user.company_logo,
-        "company_logo_size": user.company_logo_size
+        "company_logo_size": user.company_logo_size,
+        "api_key": user.api_key
     }
+
+@router.post("/users/me/generate-api-key", dependencies=[Depends(verify_api_key)])
+async def generate_user_api_key(current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(UserModel).where(UserModel.email == current_email))
+    user = result.scalar_one_or_none()
+    
+    from dotenv import dotenv_values
+    env_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+    env_vars = dotenv_values(env_path) if os.path.exists(env_path) else {}
+    admin_email = env_vars.get("ADMIN_EMAIL") or os.getenv("ADMIN_EMAIL") or "admin@agente.com"
+    is_env_admin = (current_email == admin_email)
+
+    if not user:
+        if is_env_admin:
+            admin_pass = env_vars.get("ADMIN_PASSWORD") or os.getenv("ADMIN_PASSWORD") or "admin123"
+            user = UserModel(
+                name="Admin Super",
+                email=admin_email,
+                password=get_password_hash(admin_pass),
+                role="Super Admin",
+                status="ATIVO"
+            )
+            db.add(user)
+        else:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    import secrets
+    new_api_key = f"ag_live_{secrets.token_hex(24)}"
+    user.api_key = new_api_key
+    await db.commit()
+    await db.refresh(user)
+
+    return {
+        "success": True,
+        "api_key": user.api_key,
+        "message": "Nova Chave de API gerada com sucesso!"
+    }
+
+@router.delete("/users/me/revoke-api-key", dependencies=[Depends(verify_api_key)])
+async def revoke_user_api_key(current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(UserModel).where(UserModel.email == current_email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    user.api_key = None
+    await db.commit()
+    return {"success": True, "message": "Chave de API revogada com sucesso."}
 
 @router.post("/login")
 @limiter.limit("5/minute")

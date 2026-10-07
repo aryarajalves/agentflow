@@ -23,7 +23,14 @@ const Sidebar = ({ onLogout }) => {
         isAdmin,
         isUser,
         handleUpdateUser,
-        openSettings
+        openSettings,
+        activeTab,
+        setActiveTab,
+        apiKey,
+        generatingKey,
+        revokingKey,
+        handleGenerateApiKey,
+        handleRevokeApiKey
     } = useSidebarProfile();
 
     return (
@@ -56,6 +63,13 @@ const Sidebar = ({ onLogout }) => {
                 status={status}
                 onSubmit={handleUpdateUser}
                 onClose={() => setShowSettingsModal(false)}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                apiKey={apiKey}
+                generatingKey={generatingKey}
+                revokingKey={revokingKey}
+                onGenerateApiKey={handleGenerateApiKey}
+                onRevokeApiKey={handleRevokeApiKey}
             />
 
             <LogoutConfirmModal

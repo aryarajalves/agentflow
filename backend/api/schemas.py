@@ -128,6 +128,20 @@ class GenerateChunksFromTranscriptionRequest(BaseModel):
     chunk_size: Optional[int] = 1200
     overlap: Optional[int] = 150
 
+class ProcessLessonTranscriptionRequest(BaseModel):
+    text: str
+    total_questions: Optional[int] = 5
+    chunk_size: Optional[int] = 1200
+    overlap: Optional[int] = 150
+    model: Optional[str] = "gpt-4o-mini"
+    video_title: Optional[str] = None
+    module_name: Optional[str] = None
+    chapter_name: Optional[str] = None
+    category_qa: Optional[str] = "Treinamento"
+    category_chunks: Optional[str] = "Transcrição"
+    task_id: Optional[int] = None
+    auto_save: Optional[bool] = True
+
 class AddBatchKnowledgeItemsRequest(BaseModel):
     items: List[KnowledgeItem]
 

@@ -55,6 +55,7 @@ Este arquivo registra todas as alterações manuais de schema (ALTER TABLE) real
 | 2026-09-14 | agent_config | rag_multi_query_enabled (DEFAULT TRUE), rag_parent_expansion_enabled (DEFAULT FALSE) | update_rag_defaults.py | Atualização dos valores padrão de RAG: MULTIQUERY passa a ser ativo por padrão (DEFAULT TRUE) e PARENTEXPANSION passa a ser desativado por padrão (DEFAULT FALSE). |
 | 2026-09-15 | question_funnels, leads | TODAS (question_funnels), executed_question_funnels (leads) | add_question_funnels_tables.py | Criação da tabela `question_funnels` para funis de conversão por dúvida (áudio humanizado PTT e mensagens sequenciais com delays) e coluna `executed_question_funnels` para rastrear histórico por lead. |
 | 2026-09-29 | prompt_vaults | TODAS | add_prompt_vault_table.py | Criação da tabela `prompt_vaults` para o Cofre de Prompts, desacoplando os backups de prompts do ciclo de vida dos agentes e preservando o pacote completo de prompts em exclusões acidentais. |
+| 2026-10-07 | users | api_key | add_api_key_to_users.py | Adição de coluna `api_key` (VARCHAR UNIQUE) para permitir a geração de chaves de API individuais por usuário para integrações externas. |
 
 
 

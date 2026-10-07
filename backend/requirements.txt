@@ -44,7 +44,7 @@ pandas==3.0.1             # Manipulação e análise de dados estruturados
 pdfminer.six==20260107    # Ferramenta para extração de texto e metadados de PDFs
 pdfplumber==0.11.10       # Extração avançada de texto e tabelas de documentos PDF
 pillow==12.3.0            # Processamento e manipulação de imagens
-pypdf==6.16.1             # Utilitário para manipulação, merge e split de arquivos PDF
+pypdf==6.19.0             # Utilitário para manipulação, merge e split de arquivos PDF (patch de segurança)
 pypdfium2==5.13.0         # Wrapper para PDFium (extração rápida de texto de PDFs)
 python-docx==1.1.2        # Criação e manipulação de documentos Microsoft Word (.docx)
 regex>=2024.1.1              # Motor de expressões regulares avançado (alternativo ao re nativo)
@@ -60,7 +60,7 @@ google-auth-httplib2==0.2.0 # Transporte httplib2 para autenticação Google
 google-auth-oauthlib==1.2.1 # Integração OAuthlib para fluxos de autenticação Google
 httpx==0.28.1             # Cliente HTTP moderno e assíncrono para chamadas a APIs
 requests==2.34.2          # Cliente HTTP síncrono padrão para scripts utilitários
-urllib3==2.7.0            # Cliente HTTP de baixo nível usado por diversas bibliotecas
+urllib3==2.8.0            # Cliente HTTP de baixo nível usado por diversas bibliotecas (patch de segurança)
 
 # === Testes e Qualidade ===
 coverage==7.13.4          # Ferramenta para medir cobertura de testes de código

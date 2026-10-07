@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 
 from database import async_session
-from models import TranscriptionTaskModel, TranscriptionFolder, KnowledgeItemModel, InteractionLog
+from models import TranscriptionTaskModel, TranscriptionFolder, KnowledgeItemModel, KnowledgeBaseModel, InteractionLog
 from api.deps import get_db, verify_api_key
 from api.schemas import (
     GenerateUploadUrlRequest,
@@ -23,8 +23,10 @@ from api.schemas import (
     TranscriptionRenameRequest,
     TranscriptionFolderRequest,
     GenerateQAFromTranscriptionRequest,
-    GenerateChunksFromTranscriptionRequest
+    GenerateChunksFromTranscriptionRequest,
+    ProcessLessonTranscriptionRequest
 )
+from rag_service import get_embedding, get_batch_embeddings
 from s3_service import s3_service
 from api.services.knowledge_parser import background_s3_upload
 from api.services.cost_service import calculate_ai_cost
@@ -311,3 +313,172 @@ async def generate_chunks_from_transcription(
     except Exception as e:
         logger.error(f"Erro em generate_chunks_from_transcription: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/knowledge-bases/{kb_id}/generate-qa-and-chunks")
+async def generate_qa_and_chunks(
+    kb_id: int,
+    request: ProcessLessonTranscriptionRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key)
+):
+    """
+    Processa a transcrição completa de uma aula gerando simultaneamente:
+    1. Perguntas e Respostas didáticas via IA (padrão 5 questões).
+    2. Chunks de texto contínuo sequenciais da aula.
+    3. Se auto_save=True (padrão), salva tudo na base de conhecimento com embeddings calculados.
+    """
+    kb = await db.get(KnowledgeBaseModel, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Base de conhecimento não encontrada.")
+
+    if not request.text or not request.text.strip():
+        raise HTTPException(status_code=400, detail="O texto da transcrição não pode ser vazio.")
+
+    # 1. Metadados do vídeo / aula
+    meta_parts = []
+    if request.video_title:
+        meta_parts.append(f"Vídeo: {request.video_title.strip()}")
+    if request.module_name:
+        meta_parts.append(f"Módulo: {request.module_name.strip()}")
+    if request.chapter_name:
+        meta_parts.append(f"Capítulo: {request.chapter_name.strip()}")
+    metadata_val = " | ".join(meta_parts) if meta_parts else ""
+
+    # 2. Gerar Perguntas e Respostas via IA
+    qa_list = []
+    usage = {}
+    model_used = request.model or "gpt-4o-mini"
+    cost_usd = 0.0
+    cost_brl = 0.0
+
+    try:
+        qa_list, usage = await smart_importer.generate_global_qa(
+            request.text,
+            total_questions=request.total_questions or 5,
+            model=model_used
+        )
+        if usage:
+            input_tk = usage.get("input_tokens", 0)
+            output_tk = usage.get("output_tokens", 0)
+            cost_usd, cost_brl = calculate_ai_cost(model_used, input_tk, output_tk)
+    except Exception as e:
+        logger.error(f"Erro ao gerar P&R na transcrição: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar perguntas e respostas via IA: {str(e)}")
+
+    # 3. Gerar Chunks de texto da aula
+    raw_chunks = smart_importer.chunk_text(
+        request.text,
+        chunk_size=request.chunk_size or 1200,
+        overlap=request.overlap or 150
+    )
+
+    formatted_qa = []
+    for item in qa_list:
+        q = (item.get("pergunta") or item.get("question") or "").strip()
+        a = (item.get("resposta") or item.get("answer") or "").strip()
+        cat = item.get("categoria") or item.get("category") or request.category_qa or "Treinamento"
+        if q and a:
+            formatted_qa.append({
+                "question": q,
+                "answer": a,
+                "category": cat,
+                "metadata_val": metadata_val
+            })
+
+    formatted_chunks = []
+    lesson_prefix = f" ({request.video_title.strip()})" if request.video_title else ""
+    for idx, c in enumerate(raw_chunks):
+        c_text = c.get("text", "").strip() if isinstance(c, dict) else str(c).strip()
+        if c_text:
+            formatted_chunks.append({
+                "question": f"Trecho da Aula #{idx + 1}{lesson_prefix}",
+                "answer": c_text,
+                "category": request.category_chunks or "Transcrição",
+                "metadata_val": metadata_val
+            })
+
+    all_items_to_save = formatted_qa + formatted_chunks
+
+    if not request.auto_save:
+        return {
+            "message": f"Prévia gerada: {len(formatted_qa)} P&R e {len(formatted_chunks)} trechos.",
+            "kb_id": kb_id,
+            "qa_count": len(formatted_qa),
+            "chunks_count": len(formatted_chunks),
+            "total_count": len(all_items_to_save),
+            "qa_items": formatted_qa,
+            "chunk_items": formatted_chunks,
+            "model_used": model_used,
+            "cost_usd": cost_usd,
+            "cost_brl": cost_brl
+        }
+
+    # 4. Salvar com embeddings
+    texts_for_embeddings = [it["question"] for it in all_items_to_save]
+    try:
+        embeddings, _ = await get_batch_embeddings(texts_for_embeddings)
+    except Exception as e:
+        logger.warning(f"Batch embedding fallback em generate_qa_and_chunks: {e}")
+        embeddings = []
+        for t in texts_for_embeddings:
+            try:
+                emb, _ = await get_embedding(t)
+                embeddings.append(emb)
+            except Exception:
+                embeddings.append(None)
+
+    saved_items = []
+    for idx, it in enumerate(all_items_to_save):
+        emb = embeddings[idx] if idx < len(embeddings) else None
+        db_item = KnowledgeItemModel(
+            knowledge_base_id=kb_id,
+            question=it["question"],
+            answer=it["answer"],
+            category=it["category"],
+            metadata_val=it["metadata_val"],
+            embedding=emb
+        )
+        db.add(db_item)
+        saved_items.append(db_item)
+
+    # 5. Atualizar custo se task_id foi enviado e registrar log
+    if request.task_id and cost_usd > 0:
+        task_res = await db.execute(
+            select(TranscriptionTaskModel).where(TranscriptionTaskModel.id == request.task_id)
+        )
+        t_model = task_res.scalar_one_or_none()
+        if t_model:
+            t_model.cost_usd = (t_model.cost_usd or 0.0) + cost_usd
+
+    if cost_usd > 0:
+        task_label = f"Arquivo: {request.video_title}" if request.video_title else "Aula Transcrita"
+        log = InteractionLog(
+            agent_id=None,
+            session_id=f"SYS_QA_CHUNKS_KB_{kb_id}",
+            user_message=f"Processamento Híbrido (P&R + Chunks) - {task_label}",
+            agent_response=f"Criadas {len(formatted_qa)} P&R e {len(formatted_chunks)} trechos via {model_used}.",
+            model_used=model_used,
+            input_tokens=usage.get("input_tokens", 0) if usage else 0,
+            output_tokens=usage.get("output_tokens", 0) if usage else 0,
+            cost_usd=cost_usd,
+            cost_brl=cost_brl,
+            timestamp=datetime.now(timezone.utc)
+        )
+        db.add(log)
+
+    await db.commit()
+
+    return {
+        "message": f"Sucesso! {len(formatted_qa)} perguntas/respostas e {len(formatted_chunks)} trechos adicionados com sucesso à base #{kb_id}.",
+        "kb_id": kb_id,
+        "qa_count": len(formatted_qa),
+        "chunks_count": len(formatted_chunks),
+        "total_saved": len(saved_items),
+        "qa_items": formatted_qa,
+        "chunk_items": formatted_chunks,
+        "model_used": model_used,
+        "cost_usd": cost_usd,
+        "cost_brl": cost_brl
+    }
+

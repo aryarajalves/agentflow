@@ -185,7 +185,92 @@ export function useTrainingModal() {
         finally { setIsGenerating(false); }
     };
 
-    const handleGenerate = () => method === 'qa' ? handleGenerateQA() : handleGenerateChunks();
+    const handleGenerateBoth = async () => {
+        if (!selectedKbId) { showToast('Selecione uma base de conhecimento de destino.', 'error'); return; }
+        setIsGenerating(true);
+        try {
+            const [qaResponse, chunksResponse] = await Promise.all([
+                api.post('/knowledge-bases/generate-qa-from-transcription', {
+                    text: taskForTraining.result_text || '',
+                    total_questions: Number(numQuestions),
+                    model: selectedModel,
+                    task_id: taskForTraining.id
+                }),
+                api.post('/knowledge-bases/generate-chunks-from-transcription', {
+                    text: taskForTraining.result_text || '',
+                    chunk_size: Number(chunkSize),
+                    overlap: Number(overlapSize)
+                })
+            ]);
+
+            let combinedList = [];
+            let modelUsed = selectedModel;
+            let costUsd = 0;
+            let costBrl = 0;
+
+            if (qaResponse.ok) {
+                const qaData = await qaResponse.json();
+                const resultItems = Array.isArray(qaData) ? qaData : (qaData.items || []);
+                modelUsed = qaData.model || selectedModel;
+                costUsd = qaData.cost_usd || 0;
+                costBrl = qaData.cost_brl || 0;
+
+                const formattedQa = resultItems.map((item, i) => {
+                    const ans = (item.resposta || item.answer || '').trim();
+                    const isDup = targetKbItems.some(existing => existing.answer && existing.answer.trim() === ans);
+                    return {
+                        localId: `qa-${Date.now()}-${i}`,
+                        question: item.pergunta || item.question || '',
+                        answer: ans,
+                        category: item.categoria || item.category || 'Treinamento',
+                        isDuplicate: isDup
+                    };
+                });
+                combinedList.push(...formattedQa);
+            }
+
+            if (chunksResponse.ok) {
+                const chunksData = await chunksResponse.json();
+                if (Array.isArray(chunksData)) {
+                    const formattedChunks = chunksData.map((item, i) => {
+                        const ans = (item.answer || '').trim();
+                        const isDup = targetKbItems.some(existing => existing.answer && existing.answer.trim() === ans);
+                        return {
+                            localId: `chunk-${Date.now()}-${i}`,
+                            question: item.question || `Trecho da Aula #${i + 1}`,
+                            answer: ans,
+                            category: 'Transcrição',
+                            isDuplicate: isDup
+                        };
+                    });
+                    combinedList.push(...formattedChunks);
+                }
+            }
+
+            if (combinedList.length > 0) {
+                setUsedLlmModel(modelUsed);
+                setGenerationCostUsd(costUsd);
+                setGenerationCostBrl(costBrl);
+                setQaList(combinedList);
+                showToast(`${combinedList.length} itens gerados (P&R + Chunks) com sucesso!`);
+                if (typeof fetchTasks === 'function') {
+                    fetchTasks();
+                }
+            } else {
+                showToast('Falha ao gerar itens híbridos. Tente novamente.', 'error');
+            }
+        } catch {
+            showToast('Erro de conexão ao gerar conteúdo.', 'error');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerate = () => {
+        if (method === 'qa') return handleGenerateQA();
+        if (method === 'chunks') return handleGenerateChunks();
+        return handleGenerateBoth();
+    };
 
     const handleRemoveDuplicates = () => {
         const filtered = qaList.filter(item => !item.isDuplicate);
