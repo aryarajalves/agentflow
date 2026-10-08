@@ -1,4 +1,4 @@
-﻿from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 import json
 import logging
 import io
@@ -50,13 +50,23 @@ router = APIRouter(tags=["Knowledge Base"])
 
 # --- KNOWLEDGE BASE ENDPOINTS ---
 
-@router.get("/knowledge-bases", response_model=List[KnowledgeBase])
+@router.get(
+    "/knowledge-bases",
+    response_model=List[KnowledgeBase],
+    summary="Listar Bases de Conhecimento",
+    description="Retorna todas as bases de conhecimento cadastradas na conta, incluindo seus itens e configurações de rótulos."
+)
 async def list_knowledge_bases(db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     result = await db.execute(select(KnowledgeBaseModel).options(selectinload(KnowledgeBaseModel.items)))
     return result.scalars().all()
 
 
-@router.post("/knowledge-bases", response_model=KnowledgeBase)
+@router.post(
+    "/knowledge-bases",
+    response_model=KnowledgeBase,
+    summary="Criar Base de Conhecimento",
+    description="Cria uma nova base de conhecimento vazia com nome único, descrição e tipo (ex: 'qa' ou 'chunks')."
+)
 async def create_knowledge_base(kb: KnowledgeBase, db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     result = await db.execute(select(KnowledgeBaseModel).where(KnowledgeBaseModel.name == kb.name))
     if result.scalars().first():
@@ -74,7 +84,12 @@ async def create_knowledge_base(kb: KnowledgeBase, db: AsyncSession = Depends(ge
     return result.scalars().one()
 
 
-@router.get("/knowledge-bases/{kb_id}", response_model=KnowledgeBase)
+@router.get(
+    "/knowledge-bases/{kb_id}",
+    response_model=KnowledgeBase,
+    summary="Obter Detalhes da Base de Conhecimento",
+    description="Consulta as informações detalhadas de uma base de conhecimento e todos os seus itens cadastrados a partir do ID."
+)
 async def get_knowledge_base(kb_id: int, db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     result = await db.execute(
         select(KnowledgeBaseModel)
@@ -87,7 +102,12 @@ async def get_knowledge_base(kb_id: int, db: AsyncSession = Depends(get_db), _: 
     return kb
 
 
-@router.put("/knowledge-bases/{kb_id}", response_model=KnowledgeBase)
+@router.put(
+    "/knowledge-bases/{kb_id}",
+    response_model=KnowledgeBase,
+    summary="Atualizar Base de Conhecimento",
+    description="Atualiza as informações cadastrais de uma base (nome, descrição, tipo e rótulos personalizados de campos)."
+)
 async def update_knowledge_base(kb_id: int, kb: KnowledgeBase, db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     result = await db.execute(select(KnowledgeBaseModel).where(KnowledgeBaseModel.id == kb_id))
     db_kb = result.scalars().first()
@@ -115,7 +135,11 @@ async def update_knowledge_base(kb_id: int, kb: KnowledgeBase, db: AsyncSession 
     return result.scalars().first()
 
 
-@router.delete("/knowledge-bases/{kb_id}")
+@router.delete(
+    "/knowledge-bases/{kb_id}",
+    summary="Excluir Base de Conhecimento",
+    description="Remove permanentemente uma base de conhecimento e todos os seus itens associados do banco de dados."
+)
 async def delete_knowledge_base(kb_id: int, db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     result = await db.execute(select(KnowledgeBaseModel).where(KnowledgeBaseModel.id == kb_id))
     kb = result.scalars().first()
@@ -421,7 +445,12 @@ async def import_new_knowledge_base(
 
 # --- KNOWLEDGE ITEM ENDPOINTS ---
 
-@router.post("/knowledge-bases/{kb_id}/items", response_model=KnowledgeItem)
+@router.post(
+    "/knowledge-bases/{kb_id}/items",
+    response_model=KnowledgeItem,
+    summary="Criar Item de Conhecimento",
+    description="Adiciona uma pergunta e resposta em uma base com cálculo de embedding vetorial (pgvector) a partir da pergunta e de suas variações."
+)
 async def add_knowledge_item(kb_id: int, item: KnowledgeItem, db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     clean_vars = clean_variations_list(item.question_variations)
     validate_variations_count(len(clean_vars))
@@ -610,7 +639,11 @@ async def bulk_knowledge_items(kb_id: int, items: List[KnowledgeItem], db: Async
     return {"message": "Bulk sync completed"}
 
 
-@router.post("/knowledge-bases/{kb_id}/items/add-batch")
+@router.post(
+    "/knowledge-bases/{kb_id}/items/add-batch",
+    summary="Adicionar Itens em Lote (Batch)",
+    description="Permite cadastrar múltiplos itens de conhecimento de forma rápida em uma única chamada com cálculo de vetores semânticos."
+)
 async def add_batch_knowledge_items(
     kb_id: int,
     request: AddBatchKnowledgeItemsRequest,

@@ -410,7 +410,7 @@ async def get_webhook_event_detail_by_id(event_id: int, db: AsyncSession = Depen
     }
 
 
-@router.post("/events/{event_id}/explain-response")
+@router.post("/events/{event_id}/explain-response", include_in_schema=False)
 async def explain_webhook_event_response(event_id: int, db: AsyncSession = Depends(get_db)):
     """
     Analisa criticamente por que a IA gerou aquela resposta no evento de automação.

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/{webhook_id}/simulate-load", status_code=200)
+@router.post("/{webhook_id}/simulate-load", status_code=200, include_in_schema=False)
 async def simulate_webhook_load(
     webhook_id: int, 
     payload: SimulateLoadRequest, 

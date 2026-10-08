@@ -65,10 +65,116 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 API Modular encerrando...")
 
 
+API_DESCRIPTION = """
+### 🚀 Bem-vindo à API Oficial do AgenteFlow!
+
+O **AgenteFlow** é uma plataforma corporativa avançada para **criação, gestão, monitoramento e automação de Agentes de Inteligência Artificial**, especializada em atendimento conversacional consultivo (WhatsApp/ZapVoice), vendas automáticas, qualificação de leads e bases de conhecimento com RAG (Retrieval-Augmented Generation) de alta fidelidade.
+
+---
+
+### 🌟 Principais Módulos da Plataforma:
+
+1. **🧠 Agentes de IA e Personas Multimodais:**
+   - Criação e parametrização de agentes com modelos de ponta (OpenAI GPT-4o, GPT-5, Whisper).
+   - Otimização com **Prompt Caching** (divisão em prompt estático e dinâmico) para redução drástica de custos de tokens.
+   - **Pre-Router AI**: Triagem e classificação ultrarrápida de mensagens antes da chamada do agente principal.
+
+2. **📚 Bases de Conhecimento e RAG Semântico (pgvector):**
+   - Ingestão inteligente de documentos, planilhas, PDFs e transcrições de aulas.
+   - Busca vetorial semântica com similaridade de cosseno, multi-query, re-ranking e preservação de metadados ricos.
+
+3. **🎬 Processamento de Aulas e Transcrições:**
+   - Endpoint híbrido de alta performance para fatiamento de aulas em blocos contínuos (chunks) e extração de perguntas & respostas didáticas.
+   - Suporte completo a metadados: **Módulo**, **Nome da Aula**, **Capítulos**, **Tópicos Principais** e dados livres.
+
+4. **⚡ Automação de WhatsApp e Webhooks (ZapVoice):**
+   - Envio de áudios humanizados PTT com delay configurável.
+   - Reconhecimento inteligente de comprovantes de pagamento e prints de tela via OCR.
+   - Réguas de follow-up pós-atendimento e cancelamento automático por compra confirmada.
+
+5. **🛡️ Segurança e Autenticação de API:**
+   - Integração simples via cabeçalho `X-API-Key: ag_live_...` com chaves individuais por usuário gerenciáveis no painel.
+
+---
+
+### 🔑 Como Testar os Endpoints no Swagger:
+1. Clique no botão verde **Authorize 🔓** no canto superior direito.
+2. Insira a sua chave no campo **X-API-Key** (`ag_live_...`).
+3. Clique em **Authorize** e teste qualquer endpoint diretamente pela interface interativa.
+"""
+
+tags_metadata = [
+    {
+        "name": "Health",
+        "description": "Verificação de conectividade, status operacional e integridade dos serviços.",
+    },
+    {
+        "name": "Authentication",
+        "description": "Gestão de perfil, credenciais de acesso e emissão/revogação de Chaves de API (`X-API-Key`).",
+    },
+    {
+        "name": "Knowledge Base",
+        "description": "Gerenciamento de bases de conhecimento, cálculo de embeddings vetoriais, busca RAG e importação de documentos.",
+    },
+    {
+        "name": "Transcriptions",
+        "description": "Processamento inteligente de transcrições de aulas, geração híbrida de P&R didáticas e chunks com metadados.",
+    },
+    {
+        "name": "Agents",
+        "description": "Criação, clonagem, configuração de personas, prompts estáticos/dinâmicos e parâmetros dos agentes de IA.",
+    },
+    {
+        "name": "Leads",
+        "description": "Gestão de contatos capturados, qualificação, tags de CRM e controle de réguas de follow-up.",
+    },
+    {
+        "name": "Sales",
+        "description": "Histórico de transações e vendas integradas via plataformas de checkout (Kiwify, Hotmart, etc.).",
+    },
+    {
+        "name": "webhooks",
+        "description": "Configuração de automações, instâncias de conexão com canais de mensagem e réguas de atendimento.",
+    },
+    {
+        "name": "Question Funnels",
+        "description": "Funis de conversão por dúvida com sequências de áudios humanizados PTT e continuidade conversacional.",
+    },
+    {
+        "name": "Prompt Vault",
+        "description": "Cofre de prompts, versionamento de personas e backups de segurança pré-exclusão.",
+    },
+    {
+        "name": "Semantic Cache",
+        "description": "Cache semântico de respostas frequentes para economia de até 90% em tokens e latência zero.",
+    },
+    {
+        "name": "Analytics",
+        "description": "Métricas de conversão, custos de tokens por modelo e relatórios operacionais em tempo real.",
+    },
+    {
+        "name": "Chat",
+        "description": "Sessões de conversa, histórico em tempo real e playground interativo de atendimento.",
+    },
+    {
+        "name": "Integrations",
+        "description": "Conexões externas e chaves de provedores de IA (OpenAI, Anthropic, Gemini, Groq).",
+    },
+    {
+        "name": "Inbox",
+        "description": "Caixas de entrada integradas e canais de comunicação com clientes.",
+    },
+    {
+        "name": "Objections",
+        "description": "Base estruturada de quebra de objeções e diretrizes de contorno para a IA.",
+    },
+]
+
 app = FastAPI(
-    title="AI Agent Manager API",
-    description="Plataforma avançada para gestão de Agentes de IA, Bases de Conhecimento e Automações de Atendimento.",
+    title="AgenteFlow",
+    description=API_DESCRIPTION,
     version="2.0.0",
+    openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
 
@@ -339,7 +445,12 @@ async def root():
     return HTMLResponse(content=html_content, status_code=200)
 
 
-@app.get("/ping", tags=["Health"])
+@app.get(
+    "/ping",
+    tags=["Health"],
+    summary="Verificação de Saúde (Health Check)",
+    description="Retorna status operacional da API para monitoramento e validação de conectividade."
+)
 async def ping():
     return {"status": "ok", "message": "Backend is reachable"}
 
@@ -367,12 +478,12 @@ app.include_router(tools.router)
 app.include_router(variables.router)
 app.include_router(feedback.router)
 app.include_router(chat.router)
-app.include_router(tester.router)
+app.include_router(tester.router, include_in_schema=False)
 app.include_router(integrations.router)
 app.include_router(inbox.router)
 app.include_router(leads.router)
 app.include_router(objections.router)
-app.include_router(backups.router)
+app.include_router(backups.router, include_in_schema=False)
 app.include_router(sales.router)
 app.include_router(semantic_cache.router)
 app.include_router(question_funnels.router)
@@ -398,13 +509,13 @@ async def websocket_events(websocket: WebSocket):
 # Routers legados (importados do main.py original)
 try:
     from prompt_lab import router as prompt_lab_router
-    app.include_router(prompt_lab_router)
+    app.include_router(prompt_lab_router, include_in_schema=False)
 except ImportError:
     logger.warning("⚠️ prompt_lab não encontrado.")
 
 try:
     from session_analysis import router as analysis_router
-    app.include_router(analysis_router)
+    app.include_router(analysis_router, include_in_schema=False)
 except ImportError:
     logger.warning("⚠️ session_analysis não encontrado.")
 

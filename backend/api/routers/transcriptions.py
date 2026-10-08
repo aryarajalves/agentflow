@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Transcriptions"])
 
 
-@router.post("/knowledge-bases/generate-upload-url")
+@router.post("/knowledge-bases/generate-upload-url", include_in_schema=False)
 async def generate_upload_url(
     request: GenerateUploadUrlRequest,
     db: AsyncSession = Depends(get_db),
@@ -63,7 +63,7 @@ async def generate_upload_url(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/knowledge-bases/confirm-upload")
+@router.post("/knowledge-bases/confirm-upload", include_in_schema=False)
 async def confirm_upload_endpoint(
     request: ConfirmUploadRequest,
     db: AsyncSession = Depends(get_db),
@@ -77,7 +77,7 @@ async def confirm_upload_endpoint(
     return {"message": "Processamento iniciado.", "status": "PENDING"}
 
 
-@router.post("/knowledge-bases/transcribe")
+@router.post("/knowledge-bases/transcribe", include_in_schema=False)
 async def transcribe_video_endpoint(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -236,7 +236,11 @@ async def process_transcription_endpoint(
     return {"message": "Processado"}
 
 
-@router.post("/knowledge-bases/generate-qa-from-transcription")
+@router.post(
+    "/knowledge-bases/generate-qa-from-transcription",
+    summary="Gerar Perguntas e Respostas da Transcrição",
+    description="Utiliza modelo de linguagem (LLM) para extrair perguntas e respostas didáticas a partir do texto de uma aula sem persistir no banco."
+)
 async def generate_qa_from_transcription(
     request: GenerateQAFromTranscriptionRequest,
     db: AsyncSession = Depends(get_db),
@@ -295,7 +299,11 @@ async def generate_qa_from_transcription(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/knowledge-bases/generate-chunks-from-transcription")
+@router.post(
+    "/knowledge-bases/generate-chunks-from-transcription",
+    summary="Fatiar Transcrição em Chunks",
+    description="Divide o texto da transcrição em blocos contínuos sequenciais com tamanho e sobreposição configuráveis sem consumo de LLM."
+)
 async def generate_chunks_from_transcription(
     request: GenerateChunksFromTranscriptionRequest,
     _: None = Depends(verify_api_key)
@@ -315,7 +323,11 @@ async def generate_chunks_from_transcription(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/knowledge-bases/{kb_id}/generate-qa-and-chunks")
+@router.post(
+    "/knowledge-bases/{kb_id}/generate-qa-and-chunks",
+    summary="Processar Aula (P&R + Chunks com Metadados Enriquecidos)",
+    description="Endpoint híbrido completo: gera 5 P&R didáticas via IA + divide em chunks contínuos, calcula embeddings (pgvector) e salva tudo na base de conhecimento com metadados (módulo, tópicos, capítulos e dados adicionais)."
+)
 async def generate_qa_and_chunks(
     kb_id: int,
     request: ProcessLessonTranscriptionRequest,

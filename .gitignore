@@ -51,6 +51,8 @@ backend/test_auto_primary*.txt
 backend/*_log.txt
 backend/out_tests.txt
 backend/*.log
+backend/logs/
+*.log
 backend/tmp_*.py
 backend/tmp_*.txt
 backend/celerybeat-schedule

@@ -226,6 +226,28 @@ docker-compose -f docker/docker-compose-local.yml up -d --build frontend backend
   - **Por Período (Data Inicial e Final):** Filtro por data de criação (`created_at`) cobrindo o dia completo em UTC/horário de Brasília.
   - **Botão de Limpeza em 1 Clique:** Redefine todos os filtros aplicados e reinicia a paginação de forma suave.
 
+### 19. Chaves de API Individuais (API Key) & Modal de Configurações Modular
+- **Geração e Gestão de Chaves de API:** Cada usuário pode emitir sua chave de acesso pessoal (`ag_live_...`) no formato seguro com hash SHA-256 no banco de dados e visualização do token pleno apenas uma única vez na criação.
+- **Autenticação Headless:** Permite integrar sistemas externos, plataformas de membros (ex: Hotmart, Kiwify, Cademi, Eduzz) ou scripts de automação via cabeçalho HTTP `X-API-Key`.
+- **Modal de Configurações Dividido em Abas:** Reestruturação visual elegante com abas `Perfil`, `White-Label` e `Chave API`, garantindo navegação limpa e intuitiva.
+- **Proteção Anti-Sessão Expirada:** Interceptor global no frontend com deslogamento e redirecionamento automático para a tela de login quando o token JWT expira (HTTP 401).
+
+### 20. Processamento Híbrido de Transcrições de Aulas (P&R + Chunks com Metadados Enriquecidos)
+- **Modo Duplo em 1 Clique:** O endpoint `/transcriptions/knowledge-bases/generate-qa-and-chunks` divide a transcrição contínua da aula em chunks sequenciais com sobreposição (overlap) e simultaneamente gera blocos didáticos de Perguntas & Respostas.
+- **Suporte Completo a Metadados:** Cada item gerado herda metadados estruturados para filtragem vetorial precisa:
+  - `module`: Módulo do treinamento (ex: "Módulo 03 - Tráfego Pago");
+  - `lesson_name`: Nome da aula transcrita;
+  - `chapters`: Marcações de tempo e capítulos (ex: `["00:00 Introdução", "04:30 Configurando Pixel"]`);
+  - `main_topics`: Tópicos chave da aula utilizados como fio condutor pedagógico para a IA focar as perguntas nos pontos cruciais;
+  - `extra_metadata`: Dicionário livre para tags e identificadores de integração externa.
+- **Guia Oficial de Integração:** Consulte [`GUIA_API_BASE_DE_CONHECIMENTO.md`](GUIA_API_BASE_DE_CONHECIMENTO.md) para documentação completa dos payloads, parâmetros e exemplos cURL/Python.
+
+### 21. Documentação Oficial AgenteFlow (Swagger OpenAPI 3.1 & Schema Seguro)
+- **Interface Interativa Swagger:** Acessível diretamente pelo navegador em `http://localhost:8002/docs` (ou `/docs`).
+- **Título & Identidade Corporativa:** Documentação renomeada para **AgenteFlow 2.0.0**, contendo visão geral da arquitetura, descrição detalhada dos módulos e guias de teste interativo.
+- **Autenticação OpenAPI:** Integração nativa com o botão verde **Authorize 🔓** no topo da página, permitindo testar requisições em tempo real usando a chave `X-API-Key`.
+- **Segurança de Schema e Ocultação Seletiva:** Endpoints passivos (webhooks de mensagens, ingestão contínua de memória e checkouts), uploads de baixo nível para S3, simuladores de estresse de carga e módulos internos foram ocultados do schema OpenAPI com `include_in_schema=False`. Eles continuam 100% operacionais no backend, porém sem poluir a documentação pública nem expor detalhes desnecessários de infraestrutura.
+
 ---
 
 ## 🧪 Suíte de Testes

@@ -18,7 +18,7 @@ class SaleCreatePayload(BaseModel):
     valor: float = 0.0
     plataforma: Optional[str] = None # Kiwify, Hotmart, etc.
 
-@router.post("/receive", status_code=201)
+@router.post("/receive", status_code=201, include_in_schema=False)
 async def receive_sale_webhook(payload: SaleCreatePayload, db: AsyncSession = Depends(get_db)):
     """
     Endpoint para receber eventos de vendas de plataformas de checkout/afiliados.
@@ -43,7 +43,12 @@ async def receive_sale_webhook(payload: SaleCreatePayload, db: AsyncSession = De
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao registrar venda: {str(e)}")
 
-@router.get("", status_code=200)
+@router.get(
+    "",
+    status_code=200,
+    summary="Listar Vendas Registradas",
+    description="Lista todo o histórico de vendas e transações integradas via plataformas de checkout (Kiwify, Hotmart, etc.)."
+)
 async def list_sales(db: AsyncSession = Depends(get_db), _: None = Depends(verify_api_key)):
     """
     Lista todas as vendas registradas no banco de dados.

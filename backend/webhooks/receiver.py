@@ -53,7 +53,7 @@ CHATWOOT_URL_DEFAULT = (os.getenv("CHATWOOT_URL") or "").rstrip("/")
 CHATWOOT_TOKEN_DEFAULT = os.getenv("CHATWOOT_API_TOKEN") or ""
 
 
-@router.get("/receive/{token}", status_code=200)
+@router.get("/receive/{token}", status_code=200, include_in_schema=False)
 async def check_webhook_active(token: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(WebhookConfigModel).where(WebhookConfigModel.token == token, WebhookConfigModel.is_active == True))
     config = result.scalar_one_or_none()
@@ -67,7 +67,7 @@ async def check_webhook_active(token: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/receive/{token}", status_code=200)
+@router.post("/receive/{token}", status_code=200, include_in_schema=False)
 async def receive_webhook(token: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(WebhookConfigModel).where(WebhookConfigModel.token == token, WebhookConfigModel.is_active == True))
     config = result.scalar_one_or_none()
@@ -624,7 +624,7 @@ async def receive_webhook(token: str, request: Request, db: AsyncSession = Depen
     return {"ok": True, "event_id": event.id}
 
 
-@router.get("/memory/{token}", status_code=200)
+@router.get("/memory/{token}", status_code=200, include_in_schema=False)
 async def check_memory_webhook(token: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(WebhookConfigModel).where(WebhookConfigModel.memory_token == token, WebhookConfigModel.is_active == True))
     config = result.scalar_one_or_none()
@@ -637,7 +637,7 @@ async def check_memory_webhook(token: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/memory/{token}", status_code=200)
+@router.post("/memory/{token}", status_code=200, include_in_schema=False)
 async def receive_memory_webhook(token: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(WebhookConfigModel).where(WebhookConfigModel.memory_token == token, WebhookConfigModel.is_active == True))
     config = result.scalar_one_or_none()

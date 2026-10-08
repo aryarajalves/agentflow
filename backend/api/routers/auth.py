@@ -21,7 +21,12 @@ from api.limiter import limiter
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Authentication"])
 
-@router.get("/users/me", dependencies=[Depends(verify_api_key)])
+@router.get(
+    "/users/me",
+    dependencies=[Depends(verify_api_key)],
+    summary="Obter Dados do Usuário Logado",
+    description="Retorna o perfil completo do usuário autenticado, incluindo permissões de acesso, dados de marca branca (White-Label) e status da Chave de API ativa."
+)
 async def get_me(current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(UserModel).where(UserModel.email == current_email))
     user = result.scalar_one_or_none()
@@ -47,7 +52,12 @@ async def get_me(current_email: str = Depends(get_current_user), db: AsyncSessio
         "api_key": user.api_key
     }
 
-@router.put("/users/me", dependencies=[Depends(verify_api_key)])
+@router.put(
+    "/users/me",
+    dependencies=[Depends(verify_api_key)],
+    summary="Atualizar Perfil e White-Label",
+    description="Atualiza informações cadastrais do usuário (nome, senha) ou configurações de marca branca (nome da empresa, logo e tamanho na barra lateral)."
+)
 async def update_me(user_update: UserUpdate, current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(UserModel).where(UserModel.email == current_email))
     user = result.scalar_one_or_none()
@@ -104,7 +114,12 @@ async def update_me(user_update: UserUpdate, current_email: str = Depends(get_cu
         "api_key": user.api_key
     }
 
-@router.post("/users/me/generate-api-key", dependencies=[Depends(verify_api_key)])
+@router.post(
+    "/users/me/generate-api-key",
+    dependencies=[Depends(verify_api_key)],
+    summary="Gerar / Regenerar Chave de API",
+    description="Gera uma chave de alta entropia com prefixo 'ag_live_' para autenticar requisições de outros sistemas ou interfaces externas."
+)
 async def generate_user_api_key(current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(UserModel).where(UserModel.email == current_email))
     user = result.scalar_one_or_none()
@@ -141,7 +156,12 @@ async def generate_user_api_key(current_email: str = Depends(get_current_user), 
         "message": "Nova Chave de API gerada com sucesso!"
     }
 
-@router.delete("/users/me/revoke-api-key", dependencies=[Depends(verify_api_key)])
+@router.delete(
+    "/users/me/revoke-api-key",
+    dependencies=[Depends(verify_api_key)],
+    summary="Revogar Chave de API",
+    description="Revoga a chave de API ativa do usuário logado, desativando o acesso de qualquer integração externa que a utilize."
+)
 async def revoke_user_api_key(current_email: str = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(UserModel).where(UserModel.email == current_email))
     user = result.scalar_one_or_none()

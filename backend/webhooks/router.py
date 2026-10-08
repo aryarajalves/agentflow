@@ -87,10 +87,10 @@ router.add_api_route("/{webhook_id}/toggle-active", toggle_webhook_active, metho
 router.add_api_route("/{webhook_id}", delete_webhook, methods=["DELETE"], status_code=204)
 
 # 2. Receiver
-router.add_api_route("/receive/{token}", check_webhook_active, methods=["GET"], status_code=200)
-router.add_api_route("/receive/{token}", receive_webhook, methods=["POST"], status_code=200)
-router.add_api_route("/memory/{token}", check_memory_webhook, methods=["GET"], status_code=200)
-router.add_api_route("/memory/{token}", receive_memory_webhook, methods=["POST"], status_code=200)
+router.add_api_route("/receive/{token}", check_webhook_active, methods=["GET"], status_code=200, include_in_schema=False)
+router.add_api_route("/receive/{token}", receive_webhook, methods=["POST"], status_code=200, include_in_schema=False)
+router.add_api_route("/memory/{token}", check_memory_webhook, methods=["GET"], status_code=200, include_in_schema=False)
+router.add_api_route("/memory/{token}", receive_memory_webhook, methods=["POST"], status_code=200, include_in_schema=False)
 
 # 3. Events & History
 router.add_api_route("/{webhook_id}/events", list_webhook_events, methods=["GET"], response_model=WebhookEventsPaginatedResponse)
@@ -100,8 +100,8 @@ router.add_api_route("/{webhook_id}/events/{event_id}/cancel", cancel_webhook_ev
 router.add_api_route("/{webhook_id}/events/{event_id}/retry", retry_webhook_event_endpoint, methods=["POST"], status_code=200)
 router.add_api_route("/{webhook_id}/events/{event_id}", get_webhook_event_detail, methods=["GET"])
 router.add_api_route("/events/{event_id}", get_webhook_event_detail_by_id, methods=["GET"])
-router.add_api_route("/events/{event_id}/explain-response", explain_webhook_event_response, methods=["POST"])
-router.add_api_route("/{webhook_id}/events/{event_id}/explain-response", explain_webhook_event_response, methods=["POST"])
+router.add_api_route("/events/{event_id}/explain-response", explain_webhook_event_response, methods=["POST"], include_in_schema=False)
+router.add_api_route("/{webhook_id}/events/{event_id}/explain-response", explain_webhook_event_response, methods=["POST"], include_in_schema=False)
 router.add_api_route("/{webhook_id}/followup-metrics", get_webhook_followup_metrics, methods=["GET"])
 
 # 4. Leads & Pipelines
@@ -122,7 +122,7 @@ router.add_api_route("/{webhook_id}/leads/{lead_id}/followup/trigger-now", trigg
 router.add_api_route("/{webhook_id}/leads/{lead_id}/followup/skip-step", skip_lead_followup_step, methods=["POST"])
 
 # 5. Tools & Simulation
-router.add_api_route("/{webhook_id}/simulate-load", simulate_webhook_load, methods=["POST"], status_code=200)
+router.add_api_route("/{webhook_id}/simulate-load", simulate_webhook_load, methods=["POST"], status_code=200, include_in_schema=False)
 router.add_api_route("/{webhook_id}/whatsapp-templates", get_webhook_whatsapp_templates, methods=["GET"])
 router.add_api_route("/zapvoice/templates", get_zapvoice_templates_custom, methods=["GET"])
 
