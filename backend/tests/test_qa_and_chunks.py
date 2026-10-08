@@ -122,3 +122,69 @@ async def test_generate_qa_and_chunks_validation(client: AsyncClient):
     )
     # Deve falhar com 400 ou 404
     assert res_400.status_code in [400, 404]
+
+@pytest.mark.asyncio
+async def test_generate_qa_and_chunks_with_enriched_metadata(client: AsyncClient, db_session):
+    """Valida o envio de metadados enriquecidos: topics, chapters e extra_metadata."""
+    kb = KnowledgeBaseModel(name="Base Teste Metadados Ricos", description="Teste de metadados")
+    db_session.add(kb)
+    await db_session.commit()
+    await db_session.refresh(kb)
+    kb_id = kb.id
+
+    mock_qa = [
+        {"pergunta": "Como configurar o Pixel?", "resposta": "Vá nas configurações de negócio.", "categoria": "Treinamento"}
+    ]
+    mock_chunks = [
+        {"text": "Trecho da aula sobre Pixel e Domínio."}
+    ]
+
+    async def mock_batch_embeddings(texts):
+        return [[0.01] * 1536 for _ in texts], None
+
+    with patch("smart_importer.generate_global_qa", new_callable=AsyncMock) as mock_qa_gen, \
+         patch("smart_importer.chunk_text") as mock_chunk_gen, \
+         patch("api.routers.transcriptions.get_batch_embeddings", side_effect=mock_batch_embeddings):
+
+        mock_qa_gen.return_value = (mock_qa, {"input_tokens": 40, "output_tokens": 20})
+        mock_chunk_gen.return_value = mock_chunks
+
+        payload = {
+            "text": "Transcrição completa da aula de tráfego pago.",
+            "total_questions": 1,
+            "video_title": "Aula 02 - Pixel e Domínio",
+            "module_name": "Módulo 01",
+            "chapter_name": "Capítulo 02",
+            "topics": ["Pixel", "DNS", "Domínio Próprio"],
+            "chapters": ["00:00 Intro", "05:00 Configuração"],
+            "extra_metadata": {"duracao": "15min", "plataforma": "Meta"},
+            "auto_save": True
+        }
+
+        response = await client.post(f"/knowledge-bases/{kb_id}/generate-qa-and-chunks", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["qa_count"] == 1
+        assert data["chunks_count"] == 1
+
+        # Verificar se user_suggestions foi passado para o mock de IA
+        mock_qa_gen.assert_called_once()
+        _, kwargs = mock_qa_gen.call_args
+        assert "Pixel, DNS, Domínio Próprio" in kwargs.get("user_suggestions", "")
+
+        # Verificar no banco se os metadados contêm os tópicos, capítulos e dados extras
+        stmt = select(KnowledgeItemModel).where(KnowledgeItemModel.knowledge_base_id == kb_id)
+        res = await db_session.execute(stmt)
+        items = res.scalars().all()
+        assert len(items) == 2
+        for it in items:
+            assert "Vídeo: Aula 02 - Pixel e Domínio" in it.metadata_val
+            assert "Tópicos: Pixel, DNS, Domínio Próprio" in it.metadata_val
+            assert "Capítulos: 00:00 Intro, 05:00 Configuração" in it.metadata_val
+            assert "duracao: 15min" in it.metadata_val
+
+        # Limpeza
+        await db_session.execute(delete(KnowledgeItemModel).where(KnowledgeItemModel.knowledge_base_id == kb_id))
+        await db_session.execute(delete(KnowledgeBaseModel).where(KnowledgeBaseModel.id == kb_id))
+        await db_session.commit()
+

@@ -137,6 +137,9 @@ class ProcessLessonTranscriptionRequest(BaseModel):
     video_title: Optional[str] = None
     module_name: Optional[str] = None
     chapter_name: Optional[str] = None
+    topics: Optional[List[str] | str] = None
+    chapters: Optional[List[str] | str] = None
+    extra_metadata: Optional[Dict[str, Any] | str] = None
     category_qa: Optional[str] = "Treinamento"
     category_chunks: Optional[str] = "Transcrição"
     task_id: Optional[int] = None

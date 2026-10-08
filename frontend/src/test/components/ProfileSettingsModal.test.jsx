@@ -91,5 +91,6 @@ describe('ProfileSettingsModal - Abas e Chave de API', () => {
         expect(screen.getByRole('button', { name: /copiar/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /regenerar chave/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /revogar/i })).toBeInTheDocument();
+        expect(screen.queryByText(/como usar em outra interface/i)).not.toBeInTheDocument();
     });
 });

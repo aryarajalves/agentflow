@@ -725,3 +725,4 @@ Esta versão traz melhorias no encerramento de conversas após o registro de dú
 - `/frontend`: Dashboard e Interface do Usuário.
 - `/docs`: Planos de implementação e evoluções (Arquivado).
 - `/widget`: Script para integração do chat em sites externos.
+- [`GUIA_API_BASE_DE_CONHECIMENTO.md`](./GUIA_API_BASE_DE_CONHECIMENTO.md): Manual e especificação completa da API REST para criação de bases, envio de transcrições com metadados (módulos, tópicos, capítulos) e integração com aplicações externas.

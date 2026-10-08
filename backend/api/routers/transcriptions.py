@@ -343,7 +343,50 @@ async def generate_qa_and_chunks(
         meta_parts.append(f"Módulo: {request.module_name.strip()}")
     if request.chapter_name:
         meta_parts.append(f"Capítulo: {request.chapter_name.strip()}")
+
+    # Suporte a capítulos múltiplos
+    if request.chapters:
+        if isinstance(request.chapters, list):
+            chapters_str = ", ".join([str(c).strip() for c in request.chapters if str(c).strip()])
+        else:
+            chapters_str = str(request.chapters).strip()
+        if chapters_str:
+            meta_parts.append(f"Capítulos: {chapters_str}")
+
+    # Suporte a tópicos principais da aula
+    topics_list = []
+    if request.topics:
+        if isinstance(request.topics, list):
+            topics_list = [str(t).strip() for t in request.topics if str(t).strip()]
+            topics_str = ", ".join(topics_list)
+        else:
+            topics_str = str(request.topics).strip()
+            topics_list = [t.strip() for t in topics_str.split(",") if t.strip()]
+        if topics_str:
+            meta_parts.append(f"Tópicos: {topics_str}")
+
+    # Suporte a metadados adicionais livres
+    if request.extra_metadata:
+        if isinstance(request.extra_metadata, dict):
+            extra_str = " | ".join([f"{k}: {v}" for k, v in request.extra_metadata.items()])
+        else:
+            extra_str = str(request.extra_metadata).strip()
+        if extra_str:
+            meta_parts.append(extra_str)
+
     metadata_val = " | ".join(meta_parts) if meta_parts else ""
+
+    # Fio condutor pedagógico para a IA focar nos tópicos/capítulos enviados
+    user_suggestions = None
+    suggestions_parts = []
+    if topics_list:
+        suggestions_parts.append(f"Foco nos tópicos principais da aula: {', '.join(topics_list)}")
+    if request.chapter_name or request.chapters:
+        cap_val = request.chapter_name or (chapters_str if 'chapters_str' in locals() else '')
+        if cap_val:
+            suggestions_parts.append(f"Capítulos da aula: {cap_val}")
+    if suggestions_parts:
+        user_suggestions = " | ".join(suggestions_parts)
 
     # 2. Gerar Perguntas e Respostas via IA
     qa_list = []
@@ -356,6 +399,7 @@ async def generate_qa_and_chunks(
         qa_list, usage = await smart_importer.generate_global_qa(
             request.text,
             total_questions=request.total_questions or 5,
+            user_suggestions=user_suggestions,
             model=model_used
         )
         if usage:

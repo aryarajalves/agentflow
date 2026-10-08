@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 
 const Login = ({ onLogin }) => {
@@ -7,6 +7,14 @@ const Login = ({ onLogin }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+
+    useEffect(() => {
+        const expiredMsg = sessionStorage.getItem('session_expired_msg');
+        if (expiredMsg) {
+            setError(expiredMsg);
+            sessionStorage.removeItem('session_expired_msg');
+        }
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

@@ -30,9 +30,17 @@ export const api = {
         const response = await fetch(url, finalOptions);
 
         if (response.status === 401) {
-            // Token expirado ou inválido
+            // Token expirado ou inválido: desloga automaticamente e manda para a tela de login
             localStorage.removeItem('admin_token');
-            const isPublicRoute = window.location.pathname.startsWith('/chat/');
+            localStorage.removeItem('user_name');
+            localStorage.removeItem('user_role');
+            sessionStorage.setItem('session_expired_msg', 'Sua sessão expirou. Faça login novamente para continuar.');
+            
+            const isPublicRoute = 
+                window.location.pathname.startsWith('/chat/') || 
+                window.location.pathname.startsWith('/shared/') ||
+                window.location.pathname.startsWith('/public/');
+                
             if (!isPublicRoute && window.location.pathname !== '/login') {
                 window.location.href = '/login';
             }

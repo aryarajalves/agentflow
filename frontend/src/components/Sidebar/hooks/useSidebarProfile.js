@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { API_URL, AGENT_API_KEY } from '../../../config';
+import { api } from '../../../api/client';
 
 export function useSidebarProfile() {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -35,12 +35,7 @@ export function useSidebarProfile() {
 
     const fetchUserData = async () => {
         try {
-            const response = await fetch(`${API_URL}/users/me`, {
-                headers: { 
-                    'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-                    'X-API-Key': AGENT_API_KEY
-                }
-            });
+            const response = await api.get('/users/me');
             if (response.ok) {
                 const data = await response.json();
                 setUserData({ 
@@ -65,6 +60,8 @@ export function useSidebarProfile() {
                     localStorage.setItem('company_logo_size', data.company_logo_size || 'medium');
                     setCompanyLogoSize(data.company_logo_size || 'medium');
                 }
+            } else if (response.status === 401) {
+                setStatus({ type: 'error', message: 'Sua sessão expirou. Por favor, faça login novamente.' });
             }
         } catch (error) {
             console.error("Erro ao carregar dados do usuário:", error);
@@ -75,21 +72,19 @@ export function useSidebarProfile() {
         setGeneratingKey(true);
         setStatus({ type: '', message: '' });
         try {
-            const response = await fetch(`${API_URL}/users/me/generate-api-key`, {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-                    'X-API-Key': AGENT_API_KEY
-                }
-            });
+            const response = await api.post('/users/me/generate-api-key');
             if (response.ok) {
                 const data = await response.json();
                 setApiKey(data.api_key);
                 setStatus({ type: 'success', message: 'Nova Chave de API gerada com sucesso!' });
                 return data.api_key;
             } else {
-                const err = await response.json();
-                setStatus({ type: 'error', message: err.detail || 'Erro ao gerar chave de API.' });
+                const err = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    setStatus({ type: 'error', message: 'Sua sessão expirou. Faça login novamente para gerar chaves.' });
+                } else {
+                    setStatus({ type: 'error', message: err.detail || 'Erro ao gerar chave de API.' });
+                }
             }
         } catch (error) {
             setStatus({ type: 'error', message: 'Falha de conexão ao gerar chave de API.' });
@@ -102,19 +97,17 @@ export function useSidebarProfile() {
         setRevokingKey(true);
         setStatus({ type: '', message: '' });
         try {
-            const response = await fetch(`${API_URL}/users/me/revoke-api-key`, {
-                method: 'DELETE',
-                headers: { 
-                    'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-                    'X-API-Key': AGENT_API_KEY
-                }
-            });
+            const response = await api.delete('/users/me/revoke-api-key');
             if (response.ok) {
                 setApiKey('');
                 setStatus({ type: 'success', message: 'Chave de API revogada com sucesso!' });
             } else {
-                const err = await response.json();
-                setStatus({ type: 'error', message: err.detail || 'Erro ao revogar chave.' });
+                const err = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    setStatus({ type: 'error', message: 'Sua sessão expirou. Faça login novamente.' });
+                } else {
+                    setStatus({ type: 'error', message: err.detail || 'Erro ao revogar chave.' });
+                }
             }
         } catch (error) {
             setStatus({ type: 'error', message: 'Falha de conexão ao revogar chave.' });
@@ -128,21 +121,13 @@ export function useSidebarProfile() {
         setLoading(true);
         setStatus({ type: '', message: '' });
         try {
-            const response = await fetch(`${API_URL}/users/me`, {
-                method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-                    'X-API-Key': AGENT_API_KEY
-                },
-                body: JSON.stringify({
-                    name: userData.name,
-                    email: userData.email,
-                    password: userData.password || undefined,
-                    company_name: userData.company_name,
-                    company_logo: userData.company_logo,
-                    company_logo_size: userData.company_logo_size
-                })
+            const response = await api.put('/users/me', {
+                name: userData.name,
+                email: userData.email,
+                password: userData.password || undefined,
+                company_name: userData.company_name,
+                company_logo: userData.company_logo,
+                company_logo_size: userData.company_logo_size
             });
             if (response.ok) {
                 const updated = await response.json();
@@ -162,8 +147,8 @@ export function useSidebarProfile() {
                     setStatus({ type: '', message: '' });
                 }, 1500);
             } else {
-                const err = await response.json();
-                setStatus({ type: 'error', message: err.detail || 'Erro ao atualizar.' });
+                const err = await response.json().catch(() => ({}));
+                setStatus({ type: 'error', message: err.detail || 'Erro ao atualizar perfil.' });
             }
         } catch (error) {
             setStatus({ type: 'error', message: 'Erro de conexão ou autenticação.' });

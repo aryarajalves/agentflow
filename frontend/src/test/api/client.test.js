@@ -105,13 +105,18 @@ describe('API Client Module', () => {
 
     // ===== 401 INTERCEPTOR =====
     describe('Interceptor de Autenticação (401)', () => {
-        it('deve remover token em caso de 401', async () => {
+        it('deve remover token, dados de usuário e definir mensagem de expiração em caso de 401', async () => {
             localStorage.setItem('admin_token', 'expired-token');
+            localStorage.setItem('user_name', 'Aryaraj');
+            localStorage.setItem('user_role', 'Super Admin');
             window.location.pathname = '/dashboard';
             global.fetch.mockResolvedValue({ status: 401, ok: false });
 
             await api.get('/agents');
             expect(localStorage.getItem('admin_token')).toBeNull();
+            expect(localStorage.getItem('user_name')).toBeNull();
+            expect(localStorage.getItem('user_role')).toBeNull();
+            expect(sessionStorage.getItem('session_expired_msg')).toBe('Sua sessão expirou. Faça login novamente para continuar.');
         });
     });
 

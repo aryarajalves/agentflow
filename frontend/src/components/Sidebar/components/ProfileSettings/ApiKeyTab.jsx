@@ -197,33 +197,6 @@ export default function ApiKeyTab({
                 </div>
             )}
 
-            <div style={{
-                padding: '1rem',
-                borderRadius: '8px',
-                background: 'rgba(15, 23, 42, 0.5)',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
-            }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#cbd5e1', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span>💡</span> Como Usar em Outra Interface
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: '1.4', marginBottom: '0.5rem' }}>
-                    Envie o header HTTP abaixo em todas as suas requisições:
-                </p>
-                <div style={{
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '6px',
-                    background: 'rgba(2, 6, 23, 0.7)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    fontFamily: 'monospace',
-                    fontSize: '0.75rem',
-                    color: '#818cf8',
-                    overflowX: 'auto',
-                    whiteSpace: 'nowrap'
-                }}>
-                    X-API-Key: {apiKey || 'sua_chave_de_api'}
-                </div>
-            </div>
-
             <RegenerateApiKeyConfirmModal
                 isOpen={showConfirmModal}
                 onConfirm={handleConfirmRegenerate}
